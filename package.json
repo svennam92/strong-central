@@ -1,0 +1,29 @@
+{
+  "name": "strong-central",
+  "version": "1.0.0",
+  "description": "StrongLoop Central",
+  "main": "index.js",
+  "scripts": {
+    "pretest": "eslint ./ && jscs ./",
+    "lint": "eslint ./ && jscs ./",
+    "test": "tap --timeout=200 test/test-*.*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/strongloop/strong-central.git"
+  },
+  "author": "Krishna Raman <kraman@strongloop.com>",
+  "license": {
+    "name": "StrongLoop",
+    "url": "https://github.com/strongloop/strong-central/blob/master/LICENSE.md"
+  },
+  "bugs": {
+    "url": "https://github.com/strongloop/strong-central/issues"
+  },
+  "homepage": "https://github.com/strongloop/strong-central",
+  "devDependencies": {
+    "eslint": "^0.21.2",
+    "jscs": "^1.13.1",
+    "tap": "^1.1.0"
+  }
+}
