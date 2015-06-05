@@ -1,0 +1,3 @@
+# strong-central
+
+StrongLoop Central
