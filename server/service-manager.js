@@ -270,3 +270,20 @@ function onInstanceDestroy(instance, callback) {
   setImmediate(callback);
 }
 ServiceManager.prototype.onInstanceDestroy = onInstanceDestroy;
+
+function setInstanceMetadata(instanceId, data, callback) {
+  var models = this._meshApp.models;
+  var Instance = models.ServiceInstance;
+
+  Instance.findById(instanceId, function(err, instance) {
+    if (err) return callback(err);
+    if (!instance) return callback(Error('Invalid instance id'));
+
+    var mdata = instance.containerVersionInfo || {};
+    for (var k in data) {
+      mdata[k] = data[k];
+    }
+    instance.updateAttributes({containerVersionInfo: mdata}, callback);
+  });
+}
+ServiceManager.prototype.setInstanceMetadata = setInstanceMetadata;

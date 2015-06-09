@@ -264,4 +264,14 @@ function setInstanceOptions(executorId, instanceId, options, callback) {
 }
 Server.prototype.setInstanceOptions = setInstanceOptions;
 
+function onInstanceNotification(instanceId, msg, callback) {
+  this._meshApp.handleModelUpdate(instanceId, msg, callback);
+}
+Server.prototype.onInstanceNotification = onInstanceNotification;
+
+function setInstanceMetadata(instanceId, data, callback) {
+  this._serviceManager.setInstanceMetadata(instanceId, data, callback);
+}
+Server.prototype.setInstanceMetadata = setInstanceMetadata;
+
 module.exports = Server;

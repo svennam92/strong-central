@@ -60,6 +60,7 @@ Executor.prototype.close = close;
  */
 function createInstance(instanceId, instEnv, token, callback) {
   var container = this._containers[instanceId] = new Container(
+    this._server,
     this._instRouter,
     instanceId,
     instEnv,
@@ -90,7 +91,11 @@ function _sendContainerCreateCmd(container, callback) {
     env: container.getEnv(),
     startOptions: container.getStartOptions(),
     token: container.getToken(),
-  }, callback);
+  }, function(err, data) {
+    if (err) return callback(err);
+
+    container.updateContainerMetadata(data, callback);
+  });
 }
 Executor.prototype._sendContainerCreateCmd = _sendContainerCreateCmd;
 
