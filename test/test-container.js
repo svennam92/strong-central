@@ -1,29 +1,7 @@
-var test = require('tap').test;
 var Container = require('../server/drivers/common/container');
-
-function MockServer() {
-
-}
-
-function MockWsRouter() {
-  this.args = arguments;
-  this.channel = null;
-
-  this.createChannel = function() {
-    this.channel = Object.create(MockWsChannel);
-    MockWsChannel.apply(this.channel, arguments);
-    return this.channel;
-  };
-}
-
-function MockWsChannel() {
-  this.args = arguments;
-  this.getToken = function() {
-    return 'token from channel';
-  };
-
-  return this;
-}
+var MockServer = require('./mock-central').MockServer;
+var MockWsRouter = require('./mock-central').MockWsRouter;
+var test = require('tap').test;
 
 test('Test container', function(t) {
   var server = new MockServer();
@@ -31,12 +9,21 @@ test('Test container', function(t) {
   var container = null;
 
   t.test('create container', function(tt) {
-    container = new Container(server, router, '1', {foo: 'bar'}, 'token token');
-    tt.equal(router.channel.args[1], 'token token',
+    container = new Container({
+      server: server,
+      router: router,
+      instanceId: '1',
+      env: {foo: 'bar'},
+      deploymentId: 'deployment-hash',
+      token: 'container-token',
+    });
+    tt.equal(router.channel.args[1], 'container-token',
       'Initial token is passed to channel');
-    tt.equal(container.getToken(), 'token from channel',
+    tt.equal(container.getToken(), 'container-token',
       'Generated token is stored in container');
     tt.equal(container.getId(), '1', 'Id value matches');
+    tt.equal(container.getDeploymentId(), 'deployment-hash',
+      'deployment matches');
     tt.deepEqual(container.getEnv(), {foo: 'bar'}, 'Env should match');
     tt.deepEqual(container.getStartOptions(), {}, 'No start opt should be set');
     tt.end();
@@ -89,6 +76,32 @@ test('Test container', function(t) {
         tt.ok(!err, 'set env should not error');
         tt.deepEqual(container.getEnv(), {foo: 'bar', bar: 'baz'},
           'env should be set'
+        );
+        tt.end();
+      });
+    });
+  });
+
+  t.test('set deployment id', function(tt) {
+    tt.plan(5);
+    container.on('deploy', function(_c, cb) {
+      tt.strictEqual(container, _c, 'Container should match');
+      tt.deepEqual(container.getDeploymentId(), 'deployment1',
+        'deployment id should be set');
+      cb();
+    });
+    container.deploy('deployment1', function(err) {
+      tt.ok(!err, 'deployment should not error');
+      container.removeAllListeners();
+      container.on('deploy', function(_c, cb) {
+        tt.fail('listener should not be invoked.');
+        cb();
+      });
+      container.deploy('deployment1', function(err) {
+        container.removeAllListeners();
+        tt.ok(!err, 'deployment should not error');
+        tt.deepEqual(container.getDeploymentId(), 'deployment1',
+          'deployment id should be set'
         );
         tt.end();
       });

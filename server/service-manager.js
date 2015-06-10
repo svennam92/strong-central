@@ -2,8 +2,11 @@
 
 var MeshServiceManager = require('strong-mesh-models').ServiceManager;
 var async = require('async');
+var cicada = require('strong-fork-cicada');
 var centralVersion = require('../package.json').version;
 var debug = require('debug')('strong-pm:service-manager');
+var packReceiver = require('./pack-receiver');
+var path = require('path');
 var util = require('util');
 var versionApi = require('strong-mesh-models/package.json').apiVersion;
 
@@ -75,6 +78,7 @@ function getInstanceInfo(executorId, callback) {
         id: i.id,
         metadata: i.containerVersionInfo,
         token: i.token,
+        deploymentId: i.currentDeploymentId,
       });
     }, callback);
   });
@@ -82,13 +86,18 @@ function getInstanceInfo(executorId, callback) {
 ServiceManager.prototype.getInstanceInfo = getInstanceInfo;
 
 function onExecutorUpdate(executor, isNew, callback) {
+  var self = this;
+
   debug('onExecutorUpdate(%j, %s)', executor, isNew);
   if (isNew) {
     return this._server.createExecutor(executor.id, function(err, _, data) {
       if (err) return callback(err);
       executor.metadata = data.metadata;
       executor.token = data.token;
-      executor.save(callback);
+      executor.save(function(err) {
+        if (err) return callback(err);
+        self._rescheduleAll(callback);
+      });
     });
   }
   setImmediate(callback);
@@ -147,6 +156,23 @@ ServiceManager.prototype.getApiVersionInfo = getApiVersionInfo;
  * @param {function} callback fn(err)
  */
 function onServiceUpdate(service, isNew, callback) {
+  this._schedule(service, callback);
+}
+ServiceManager.prototype.onServiceUpdate = onServiceUpdate;
+
+function _rescheduleAll(callback) {
+  var models = this._meshApp.models;
+  var self = this;
+
+  models.ServerService.find(function(err, services) {
+    if (err) return callback(err);
+
+    async.each(services, self._schedule.bind(self), callback);
+  });
+}
+ServiceManager.prototype._rescheduleAll = _rescheduleAll;
+
+function _schedule(service, callback) {
   debug('onServiceUpdate(%j)', service);
 
   var self = this;
@@ -188,6 +214,7 @@ function onServiceUpdate(service, isNew, callback) {
             // allow starting tracing on all instances via env
             // for testing purposes
             tracingEnabled: !!process.env.STRONGLOOP_TRACING || false,
+            currentDeploymentId: (service.deploymentInfo || {}).id,
           });
           inst.save(callback);
         }
@@ -216,7 +243,7 @@ function onServiceUpdate(service, isNew, callback) {
     });
   }
 }
-ServiceManager.prototype.onServiceUpdate = onServiceUpdate;
+ServiceManager.prototype._schedule = _schedule;
 
 function onServiceDestroy(service, callback) {
   debug('onServiceDestroy(%j)', service);
@@ -226,15 +253,67 @@ ServiceManager.prototype.onServiceDestroy = onServiceDestroy;
 
 function onDeployment(service, req, res) {
   debug('onDeployment(%j)', service);
-  res.end('hi');
+  var svcDir = path.resolve(
+    this._server.getBaseDir(), 'svc', String(service.id)
+  );
+  var git = cicada(svcDir);
+  var self = this;
+
+  git.on('commit', function(commit) {
+    // Errors that occur within this block cannot be reported back on the deploy
+    // request because cicada/tar deploy handled and closes it before this event
+    // is emitted.
+
+    debug('commit %j for service %s', commit, service.id);
+
+    service.updateAttributes({
+      deploymentInfo: {id: commit.id}
+    }, function(err, service) {
+      if (err) {
+        console.error('Error while updating service deployment info: %j', err);
+        return;
+      }
+      debug('preparing service %s', service);
+
+      self._server.prepareDriverArtifacts(commit, function(err) {
+        if (err) return console.error('Unable to prepare driver artifact');
+
+        service.instances(true, function(err, instances) {
+          if (err) {
+            console.error('Unable to retrieve instances for service: %j', err);
+            return;
+          }
+
+          console.error('deploy to instances: svc %s instances: %s',
+            service.id, instances.map(function(i) {
+              return i.id;
+            }).join(', '));
+
+          async.each(instances, updateInstances, function(err) {
+            if (err)
+              return console.error('Unable to update instance deployment id');
+          });
+
+          function updateInstances(instance, callback) {
+            instance.updateAttributes({
+              currentDeploymentId: commit.id
+            }, callback);
+          }
+        });
+      });
+    });
+  });
+
+  if (req.method === 'PUT') {
+    debug('deploy accepted: npm package');
+    var tar = packReceiver(git);
+    return tar.handle(req, res);
+  }
+
+  debug('deploy accepted: git deploy');
+  return git.handle(req, res);
 }
 ServiceManager.prototype.onDeployment = onDeployment;
-
-function getDeployment(service, req, res) {
-  debug('getDeployment(%j)', service);
-  res.end('hi');
-}
-ServiceManager.prototype.getDeployment = getDeployment;
 
 function onInstanceUpdate(instance, isNew, callback) {
   debug('onInstanceUpdate(%j, %s)', instance, isNew);
@@ -244,7 +323,7 @@ function onInstanceUpdate(instance, isNew, callback) {
 
   if (isNew) {
     return server.createInstance(
-      execId, instId, {},
+      execId, instId, {}, instance.deploymentId,
       function(err, data) {
         if (err) return callback(err);
         instance.updateAttributes({token: data.token}, callback);
@@ -260,6 +339,9 @@ function onInstanceUpdate(instance, isNew, callback) {
   }
   tasks.push(server.setInstanceOptions.bind(
     server, execId, instId, {trace: instance.tracingEnabled}
+  ));
+  tasks.push(server.deploy.bind(
+    server, execId, instId, instance.currentDeploymentId
   ));
   async.series(tasks, callback);
 }

@@ -5,23 +5,31 @@ var debug = require('debug')('strong-central:driver:executor:executor');
 /**
  * Proxy to the executor running on a remote machine.
  *
- * @param {Server} server Central server
- * @param {WS-Router} execRouter Executor websocket router endpoint
- * @param {WS-Router} instRouter Instance websocket router endpoint
- * @param {string} execId Executor ID
- * @param {string} token Auth token
+ * @param {object} options
+ * @param {Server} options.server Central server
+ * @param {WS-Router} options.execRouter Executor websocket router endpoint
+ * @param {WS-Router} options.instance Router Instance websocket router endpoint
+ * @param {string} options.executorId Executor ID
+ * @param {string} options.token Auth token
  * @constructor
  */
-function Executor(server, execRouter, instRouter, execId, token) {
-  this._server = server;
-  this._router = execRouter;
-  this._instRouter = instRouter;
-  this._id = execId;
-  this._token = token;
+function Executor(options) {
+  this._server = options.server;
+  this._router = options.execRouter;
+  this._instRouter = options.instanceRouter;
+  this._id = options.executorId;
+  this._token = options.token;
   this._hasStarted = false;
   this._containers = {};
+
+  this._Container = options.Container || Container;
 }
 module.exports = Executor;
+
+function getToken() {
+  return this._token;
+}
+Executor.prototype.getToken = getToken;
 
 function connect(callback) {
   var channel = this._channel = this._router.createChannel(
@@ -58,17 +66,20 @@ Executor.prototype.close = close;
  * @param {string} token auth token for instance if available. Will be generated
  * if not provided
  */
-function createInstance(instanceId, instEnv, token, callback) {
-  var container = this._containers[instanceId] = new Container(
-    this._server,
-    this._instRouter,
-    instanceId,
-    instEnv,
-    token
-  );
+function createInstance(instanceId, instEnv, deploymentId, token, callback) {
+  var container = this._containers[instanceId] = new this._Container({
+    server: this._server,
+    router: this._instRouter,
+    instanceId: instanceId,
+    env: instEnv,
+    deploymentId: deploymentId,
+    token: token,
+  });
+
   container.on('start-options-updated',
     this._sendContainerOptionsCmd.bind(this));
   container.on('env-updated', this._sendContainerEnvCmd.bind(this));
+  container.on('deploy', this._sendContainerDeployCmd.bind(this));
   this._sendContainerCreateCmd(container, function(err) {
     if (err) return callback(err);
     callback(null, {
@@ -85,12 +96,18 @@ function containerFor(instanceId) {
 Executor.prototype.containerFor = containerFor;
 
 function _sendContainerCreateCmd(container, callback) {
+  debug(
+    'Creating and deploying artifact %j for instance %s (ex: %s)',
+    container.getDeploymentId(), container.getId(), this._id
+  );
+
   this._request({
     cmd: 'container-create',
     id: container.getId(),
     env: container.getEnv(),
     startOptions: container.getStartOptions(),
     token: container.getToken(),
+    deploymentId: container.getDeploymentId(),
   }, function(err, data) {
     if (err) return callback(err);
 
@@ -107,6 +124,19 @@ function _sendContainerEnvCmd(container, callback) {
   }, callback);
 }
 Executor.prototype._sendContainerEnvCmd = _sendContainerEnvCmd;
+
+function _sendContainerDeployCmd(container, callback) {
+  debug(
+    'Deploying artifact %j for instance %s (ex: %s)',
+    container.getDeploymentId(), container.getId(), this._id
+  );
+  this._request({
+    cmd: 'container-deploy',
+    id: container.getId(),
+    deploymentId: container.getDeploymentId(),
+  }, callback);
+}
+Executor.prototype._sendContainerDeployCmd = _sendContainerDeployCmd;
 
 function _sendContainerOptionsCmd(container, callback) {
   this._request({
