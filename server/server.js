@@ -267,6 +267,11 @@ function updateInstanceEnv(executorId, instanceId, env, callback) {
 }
 Server.prototype.updateInstanceEnv = updateInstanceEnv;
 
+function onExecutorRequest(executorId, req, callback) {
+  this._driver.onExecutorRequest(executorId, req, callback);
+}
+Server.prototype.onExecutorRequest = onExecutorRequest;
+
 function createInstance(executorId, instanceId, env, deploymentId, callback) {
   this._driver.createInstance(
     executorId, instanceId, env, deploymentId, callback

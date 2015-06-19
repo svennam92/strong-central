@@ -1,6 +1,9 @@
+'use strict';
+
 var Container = require('../common/container');
 var async = require('async');
 var debug = require('debug')('strong-central:driver:executor:executor');
+var fmt = require('util').format;
 
 /**
  * Proxy to the executor running on a remote machine.
@@ -94,6 +97,15 @@ function containerFor(instanceId) {
   return this._containers[instanceId];
 }
 Executor.prototype.containerFor = containerFor;
+
+function onRequest(req, callback) {
+  if (!this._hasStarted)
+    return callback(new Error(fmt('executor %d has not started', this._id)));
+
+  this._request(req, callback);
+}
+
+Executor.prototype.onRequest = onRequest;
 
 function _sendContainerCreateCmd(container, callback) {
   debug(

@@ -104,6 +104,12 @@ function onExecutorUpdate(executor, isNew, callback) {
 }
 ServiceManager.prototype.onExecutorUpdate = onExecutorUpdate;
 
+function onExecutorRequest(id, req, callback) {
+  debug('onExecutorRequest(%j, %s)', id, req);
+  return this._server.onExecutorRequest(id, req, callback);
+}
+ServiceManager.prototype.onExecutorRequest = onExecutorRequest;
+
 function updateExecutorData(id, hostname, ip, capacity, metadata, callback) {
   var models = this._meshApp.models;
   var Executor = models.Executor;
