@@ -100,6 +100,11 @@ function createInstance(executorId, instanceId, env, deploymentId, callback) {
 }
 ExecutorDriver.prototype.createInstance = createInstance;
 
+function onExecutorRequest(executorId, req, callback) {
+  this._executors[executorId].onRequest(req, callback);
+}
+ExecutorDriver.prototype.onExecutorRequest = onExecutorRequest;
+
 function updateInstanceEnv(executorId, instanceId, env, callback) {
   this._containerFor(executorId, instanceId).setEnv(env, callback);
 }
