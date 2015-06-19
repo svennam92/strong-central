@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "StrongLoop Central",
   "main": "index.js",
+  "bin": {
+    "sl-central": "bin/sl-central.js"
+  },
   "scripts": {
     "pretest": "eslint ./ && jscs ./",
     "lint": "eslint ./ && jscs ./",
