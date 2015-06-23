@@ -197,8 +197,10 @@ function start(cb) {
   function done(err) {
     if (!err) return;
 
-    console.error('Listening failed with: %s', err.message);
+    console.error('Startup failed with: %s', err.message);
     self.stop();
+    // XXX(sam) It's weird to callback AND emit an error, also, maybe
+    // cb should happen after stop?
     self.emit('error', err);
     cb(err);
   }
@@ -282,8 +284,8 @@ function onInstanceNotification(instanceId, msg, callback) {
 }
 Server.prototype.onInstanceNotification = onInstanceNotification;
 
-function setInstanceMetadata(instanceId, data, callback) {
-  this._serviceManager.setInstanceMetadata(instanceId, data, callback);
+function setInstanceMetadata(instanceId, metadata, callback) {
+  this._serviceManager.setInstanceMetadata(instanceId, metadata, callback);
 }
 Server.prototype.setInstanceMetadata = setInstanceMetadata;
 
