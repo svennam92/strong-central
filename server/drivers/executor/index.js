@@ -38,12 +38,26 @@ function ExecutorDriver(options) {
  * @param {function} callback fn(err)
  */
 function reconnect(execInfo, instanceInfos, callback) {
+  debug('reconnect executor: %j', execInfo);
   this.createExecutor(
     execInfo.id, execInfo.token, function(err, executor) {
       if (err) return callback(err);
 
       async.each(instanceInfos, connectInstance, callback);
+
       function connectInstance(instInfo, callback) {
+        debug('with instance: %j', instInfo);
+
+        // FIXME @kraman, instances can exist with currentDeploymentId of '',
+        // I'm guarding here for the moment, because it seems from the
+        // comments in service-manager that that is allowed, but such an
+        // instance is undeployable.
+        if (!instInfo.deploymentId) {
+          console.error('Undeployable executor %d instance: %j',
+            execInfo.id, instInfo);
+          return callback();
+        }
+
         executor.createInstance(
           instInfo.id, instInfo.env, instInfo.deploymentId,
           instInfo.token, callback
