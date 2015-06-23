@@ -109,22 +109,11 @@ Executor.prototype.onRequest = onRequest;
 
 function _sendContainerCreateCmd(container, callback) {
   debug(
-    'Creating and deploying artifact %j for instance %s (ex: %s)',
+    'New container artifact %j for instance %s (ex: %s)',
     container.getDeploymentId(), container.getId(), this._id
   );
 
-  this._request({
-    cmd: 'container-create',
-    id: container.getId(),
-    env: container.getEnv(),
-    startOptions: container.getStartOptions(),
-    token: container.getToken(),
-    deploymentId: container.getDeploymentId(),
-  }, function(err, data) {
-    if (err) return callback(err);
-
-    container.updateContainerMetadata(data, callback);
-  });
+  return this._sendContainerDeployCmd(container, callback);
 }
 Executor.prototype._sendContainerCreateCmd = _sendContainerCreateCmd;
 
@@ -142,17 +131,26 @@ function _sendContainerDeployCmd(container, callback) {
     'Deploying artifact %j for instance %s (ex: %s)',
     container.getDeploymentId(), container.getId(), this._id
   );
+
   this._request({
     cmd: 'container-deploy',
-    id: container.getId(),
     deploymentId: container.getDeploymentId(),
-  }, callback);
+    env: container.getEnv(),
+    id: container.getId(),
+    options: container.getStartOptions(),
+    token: container.getToken(),
+  }, function(err, data) {
+    if (err) return callback(err);
+
+    container.updateContainerMetadata(data, callback);
+  });
 }
 Executor.prototype._sendContainerDeployCmd = _sendContainerDeployCmd;
 
+
 function _sendContainerOptionsCmd(container, callback) {
   this._request({
-    cmd: 'container-start-options',
+    cmd: 'container-set-options',
     id: container.getId(),
     options: container.getStartOptions(),
   }, callback);
