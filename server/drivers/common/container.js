@@ -1,6 +1,8 @@
 var EventEmitter = require('events').EventEmitter;
+var assert = require('assert');
 var debug = require('debug')('strong-central:container');
 var lodash = require('lodash');
+var mandatory = require('../../util').mandatory;
 var util = require('util');
 
 /**
@@ -17,7 +19,7 @@ var util = require('util');
 function Container(options) {
   EventEmitter.call(this);
 
-  this._id = options.instanceId;
+  this._id = mandatory(options.instanceId);
   this._token = options.token;
   this._containerOptions = {};
   this._env = options.env || {};
@@ -29,6 +31,14 @@ function Container(options) {
     this._token
   );
   this._token = this._channel.getToken();
+
+  debug('Container %j', {
+    containerOptions: this._containerOptions,
+    deploymentId: this._deploymentId,
+    env: this._env,
+    id: this._id,
+    token: this._token,
+  });
 }
 util.inherits(Container, EventEmitter);
 
@@ -58,6 +68,7 @@ function deploy(deploymentId, callback) {
       Error('only one listener is supported for deploy event'));
 
   if (this._deploymentId !== deploymentId) {
+    assert(deploymentId);
     this._deploymentId = deploymentId;
     return this.emit('deploy', this, callback);
   }
