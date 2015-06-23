@@ -39,16 +39,33 @@ function ExecutorDriver(options) {
  * @param {function} callback fn(err)
  */
 function reconnect(execInfo, instanceInfos, callback) {
+  debug('reconnect executor: %j', execInfo);
   this.createExecutor(
     execInfo.id, execInfo.token, function(err, executor) {
       if (err) return callback(err);
 
       async.each(instanceInfos, connectInstance, callback);
+
       function connectInstance(instInfo, callback) {
-        executor.createInstance(
-          instInfo.id, instInfo.env, instInfo.deploymentId,
-          instInfo.token, callback
-        );
+        debug('with instance: %j', instInfo);
+
+        // FIXME @kraman, instances can exist with currentDeploymentId of '',
+        // I'm guarding here for the moment, because it seems from the
+        // comments in service-manager that that is allowed, but such an
+        // instance is undeployable.
+        if (!instInfo.deploymentId) {
+          console.error('Undeployable executor %d instance: %j',
+            execInfo.id, instInfo);
+          return callback();
+        }
+
+        executor.createInstance({
+          instanceId: instInfo.id,
+          env: instInfo.env,
+          deploymentId: instInfo.deploymentId,
+          token: instInfo.token,
+          startOptions: {}, // FIXME
+        }, callback);
       }
     }
   );
@@ -94,10 +111,22 @@ function stop(callback) {
 }
 ExecutorDriver.prototype.stop = stop;
 
-function createInstance(executorId, instanceId, env, deploymentId, callback) {
-  this._executors[executorId].createInstance(
-    instanceId, env, deploymentId, null, callback
-  );
+/**
+ * @param {object} options
+ * @param {string} options.executorId
+ * @param {string} options.instanceId
+ * @param {object} options.instEnv
+ * @param {string} options.token auth token for instance if available. Will be
+ * generated if not provided
+ * @param {object} options.startOptions
+ * @param {function} callback
+ */
+function createInstance(options, callback) {
+  //
+  //executorId, instanceId, env, deploymentId, callback) {
+  this._executors[options.executorId].createInstance(options, callback);
+  //  instanceId, env, deploymentId, null, callback
+  //);
 }
 ExecutorDriver.prototype.createInstance = createInstance;
 
@@ -167,6 +196,9 @@ function getDriverArtifact(instanceId, artifactId, req, res) {
   var executorId = null;
   var executor = null;
 
+  debug('get artifact: instance %s token %s', instanceId, reqToken);
+  debug('get artifact: %s', artifactId);
+
   for (var id in this._executors) {
     if (reqToken === this._executors[id].getToken()) {
       executorId = id;
@@ -175,7 +207,7 @@ function getDriverArtifact(instanceId, artifactId, req, res) {
   }
 
   if (!executor) {
-    debug('Invalid executor id %s', executorId);
+    debug('Could not find executor x-mesh-token: %s', reqToken);
     res.status(401).send('Invalid executor credentials\n').end();
     return;
   }
