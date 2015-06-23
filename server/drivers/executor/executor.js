@@ -211,7 +211,7 @@ function _onStarting(msg, callback) {
   async.series([
     server.updateExecutorData.bind(
       server, this._id, msg.hostname, msg.ip,
-      msg.cpus.length, {remoteDriver: msg.driver}
+      msg.cpus, {remoteDriver: msg.driver}
     ),
     function reissueContainerCmds(callback) {
       async.each(Object.keys(self._containers),
