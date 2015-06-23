@@ -16,6 +16,7 @@ test('Test container', function(t) {
       env: {foo: 'bar'},
       deploymentId: 'deployment-hash',
       token: 'container-token',
+      startOptions: {},
     });
     tt.equal(router.channel.args[1], 'container-token',
       'Initial token is passed to channel');

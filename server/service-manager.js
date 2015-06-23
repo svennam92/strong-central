@@ -5,6 +5,7 @@ var async = require('async');
 var cicada = require('strong-fork-cicada');
 var centralVersion = require('../package.json').version;
 var debug = require('debug')('strong-pm:service-manager');
+var fmt = require('util').format;
 var packReceiver = require('./pack-receiver');
 var path = require('path');
 var util = require('util');
@@ -180,12 +181,13 @@ ServiceManager.prototype._rescheduleAll = _rescheduleAll;
 
 function _schedule(service, callback) {
   debug('onServiceUpdate(%j)', service);
+  if (!service.deploymentInfo || !service.deploymentInfo.id) return callback();
 
   var self = this;
 
   debug('onServiceUpdate: svc %j env: %j', service.id, service.env);
 
-  async.series([scheduleInstances, updateEnvironment], callback);
+  async.series([scheduleInstances, updateInstances], callback);
 
   // Instances are created before deploy/start so that additional paramaters
   // like cpus (# procs) or tracingEnabled etc can be specified before the
@@ -220,7 +222,7 @@ function _schedule(service, callback) {
             // allow starting tracing on all instances via env
             // for testing purposes
             tracingEnabled: !!process.env.STRONGLOOP_TRACING || false,
-            currentDeploymentId: (service.deploymentInfo || {}).id,
+            currentDeploymentId: service.deploymentInfo.id,
           });
           inst.save(callback);
         }
@@ -228,23 +230,24 @@ function _schedule(service, callback) {
     }
   }
 
-  function updateEnvironment(callback) {
+  function updateInstances(callback) {
     var env = service.env;
 
     service.instances(true, function(err, instances) {
       if (err) return callback(err);
 
-      debug('updateInstanceEnv: svc %j instances: %s',
-        service.id, instances.map(function(i) {
-          return i.id;
-        }).join(', '));
+      async.each(instances, updateInstance, callback);
 
-      async.each(instances, updateInstanceEnv, callback);
+      function updateInstance(instance, callback) {
+        instance.updateAttributes({
+          currentDeploymentId: service.deploymentInfo.id,
+        }, function(err) {
+          if (err) return callback(err);
 
-      function updateInstanceEnv(instance, callback) {
-        self._server.updateInstanceEnv(
-          instance.executorId, instance.id, env, callback
-        );
+          self._server.updateInstanceEnv(
+            instance.executorId, instance.id, env, callback
+          );
+        });
       }
     });
   }
@@ -272,40 +275,18 @@ function onDeployment(service, req, res) {
 
     debug('commit %j for service %s', commit, service.id);
 
-    service.updateAttributes({
-      deploymentInfo: {id: commit.id}
-    }, function(err, service) {
-      if (err) {
-        console.error('Error while updating service deployment info: %j', err);
-        return;
-      }
-      debug('preparing service %s', service);
+    debug('preparing service %s', service);
 
-      self._server.prepareDriverArtifacts(commit, function(err) {
-        if (err) return console.error('Unable to prepare driver artifact');
+    self._server.prepareDriverArtifacts(commit, function(err) {
+      if (err) return console.error('Unable to prepare driver artifact');
 
-        service.instances(true, function(err, instances) {
-          if (err) {
-            console.error('Unable to retrieve instances for service: %j', err);
-            return;
-          }
-
-          console.error('deploy to instances: svc %s instances: %s',
-            service.id, instances.map(function(i) {
-              return i.id;
-            }).join(', '));
-
-          async.each(instances, updateInstances, function(err) {
-            if (err)
-              return console.error('Unable to update instance deployment id');
-          });
-
-          function updateInstances(instance, callback) {
-            instance.updateAttributes({
-              currentDeploymentId: commit.id
-            }, callback);
-          }
-        });
+      service.updateAttributes({
+        deploymentInfo: {id: commit.id}
+      }, function(err) {
+        if (err) {
+          console.error('Error while updating deployment info: %j', err);
+          return;
+        }
       });
     });
   });
@@ -326,30 +307,51 @@ function onInstanceUpdate(instance, isNew, callback) {
   var server = this._server;
   var instId = instance.id;
   var execId = instance.executorId;
+  var models = this._meshApp.models;
+  var Service = models.ServerService;
 
-  if (isNew) {
-    return server.createInstance(
-      execId, instId, {}, instance.deploymentId,
-      function(err, data) {
-        if (err) return callback(err);
-        instance.updateAttributes({token: data.token}, callback);
-      }
+  return Service.findById(instance.serverServiceId, function(err, service) {
+    if (err) return callback(err);
+    if (!service) return callback(Error(fmt(
+        'Invalid instance %s: service %snot found',
+        instance.id, instance.serverServiceId))
     );
-  }
 
-  var tasks = [];
-  if (instance.cpus != null) {
+    if (isNew) {
+      return server.createInstance({
+          executorId: execId,
+          instanceId: instId,
+          env: service.env,
+          token: null,
+          startOptions: {
+            size: instance.cpus,
+            trace: instance.tracingEnabled,
+          },
+          deploymentId: instance.currentDeploymentId
+        }, function(err, data) {
+          if (err) return callback(err);
+          instance.updateAttributes({token: data.token}, callback);
+        }
+      );
+    }
+
+    var tasks = [];
+    if (instance.cpus != null) {
+      tasks.push(server.setInstanceOptions.bind(
+        server, execId, instId, {size: instance.cpus}
+      ));
+    }
     tasks.push(server.setInstanceOptions.bind(
-      server, execId, instId, {size: instance.cpus}
+      server, execId, instId, {trace: instance.tracingEnabled}
     ));
-  }
-  tasks.push(server.setInstanceOptions.bind(
-    server, execId, instId, {trace: instance.tracingEnabled}
-  ));
-  tasks.push(server.deploy.bind(
-    server, execId, instId, instance.currentDeploymentId
-  ));
-  async.series(tasks, callback);
+    tasks.push(server.updateInstanceEnv.bind(
+      server, execId, instId, service.env
+    ));
+    tasks.push(server.deploy.bind(
+      server, execId, instId, instance.currentDeploymentId
+    ));
+    async.series(tasks, callback);
+  });
 }
 ServiceManager.prototype.onInstanceUpdate = onInstanceUpdate;
 

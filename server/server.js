@@ -266,10 +266,8 @@ function onExecutorRequest(executorId, req, callback) {
 }
 Server.prototype.onExecutorRequest = onExecutorRequest;
 
-function createInstance(executorId, instanceId, env, deploymentId, callback) {
-  this._driver.createInstance(
-    executorId, instanceId, env, deploymentId, callback
-  );
+function createInstance(options, callback) {
+  this._driver.createInstance(options, callback);
 }
 Server.prototype.createInstance = createInstance;
 
@@ -301,6 +299,8 @@ Server.prototype.deploy = deploy;
 function _retrieveDriverArtifact(req, res) {
   var reqPath = req.baseUrl.split('/');
 
+  debug('retrieveDriverArtifact: url %s', req.baseUrl);
+
   // Skip all path elements till /../../artifacts/
   do {
     var pathElement = reqPath.shift();
@@ -315,6 +315,7 @@ function _retrieveDriverArtifact(req, res) {
   var artifactId = reqPath.shift();
 
   if (driver !== 'executor') {
+    debug('driver is not executor: %s', driver);
     return res.status(404).send('Invalid path').end();
   }
 
