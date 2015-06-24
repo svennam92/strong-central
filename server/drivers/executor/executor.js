@@ -2,7 +2,7 @@
 
 var Container = require('../common/container');
 var async = require('async');
-var debug = require('debug')('strong-central:driver:executor:executor');
+var debug = require('debug');
 var fmt = require('util').format;
 
 /**
@@ -24,8 +24,11 @@ function Executor(options) {
   this._token = options.token;
   this._hasStarted = false;
   this._containers = {};
+  this.debug = debug('strong-central:driver:executor:' + this._id);
 
   this._Container = options.Container || Container;
+
+  this.debug('create: token %s', this._token);
 }
 module.exports = Executor;
 
@@ -40,6 +43,8 @@ function connect(callback) {
     this._token
   );
   this._token = this._channel.getToken();
+
+  this.debug('connect: token %s', this._token);
 
   callback(null, this, {
     token: channel.getToken()
@@ -110,9 +115,8 @@ function onRequest(req, callback) {
 Executor.prototype.onRequest = onRequest;
 
 function _sendContainerCreateCmd(container, callback) {
-  debug(
-    'Creating and deploying artifact %j for instance %s (ex: %s)',
-    container.getDeploymentId(), container.getId(), this._id
+  this.debug('create: deployment %j for instance %s',
+    container.getDeploymentId(), container.getId()
   );
 
   this._request({
@@ -140,9 +144,9 @@ function _sendContainerEnvCmd(container, callback) {
 Executor.prototype._sendContainerEnvCmd = _sendContainerEnvCmd;
 
 function _sendContainerDeployCmd(container, callback) {
-  debug(
-    'Deploying artifact %j for instance %s (ex: %s)',
-    container.getDeploymentId(), container.getId(), this._id
+  this.debug(
+    'deploy: deployment %j for instance %s',
+    container.getDeploymentId(), container.getId()
   );
   this._request({
     cmd: 'container-deploy',
@@ -170,27 +174,25 @@ function _sendContainerDestroyCmd(instanceId, callback) {
 Executor.prototype._sendContainerDestroyCmd = _sendContainerDestroyCmd;
 
 function _request(msg, callback) {
-  if (!this._hasStarted) {
-    debug('Executor %s has not started, discarding command: %j', this._id, msg);
+  var self = this;
+  if (!self._hasStarted) {
+    self.debug('request: not started, discarding %j', self._id, msg);
     return callback();
   }
 
-  debug('request %j of executor %s', msg, this._id);
-  this._channel.request(msg, function(res) {
-    debug('request <-- (%j)', res);
+  self.debug('request: %j', msg);
+  self._channel.request(msg, function(res) {
+    self.debug('response: %j', res);
     if (res.error) {
-      // XXX: ignore error till executor implements required commands
-      // callback(Error(res.error));
-      return callback(null, {});
+      return callback(new Error(res.error));
     }
-
     callback(null, res);
   });
 }
 Executor.prototype._request = _request;
 
 function _onNotification(msg, callback) {
-  debug('Notification from exec: %s, msg: %j', this._id, msg);
+  debug('on notification: %j', msg);
 
   switch (msg.cmd) {
     case 'starting':
