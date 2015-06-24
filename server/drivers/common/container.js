@@ -3,18 +3,30 @@ var debug = require('debug')('strong-central:container');
 var lodash = require('lodash');
 var util = require('util');
 
-function Container(server, router, instanceId, env, token) {
+/**
+ *
+ * @param {object} options
+ * @param {Server} options.server Central server
+ * @param {WS-Router} options.router Instance websocket router endpoint
+ * @param {strong} options.instanceId Id of Instance managed by this container
+ * @param {object} options.env Container environment
+ * @param {string} options.deploymentId Commit hash to be deployed
+ * @param {string} options.token WS auth token
+ * @constructor
+ */
+function Container(options) {
   EventEmitter.call(this);
 
-  this._id = instanceId;
-  this._token = token;
+  this._id = options.instanceId;
+  this._token = options.token;
   this._containerOptions = {};
-  this._env = env || {};
-  this._server = server;
+  this._env = options.env || {};
+  this._server = options.server;
+  this._deploymentId = options.deploymentId;
 
-  this._channel = router.createChannel(
+  this._channel = options.router.createChannel(
     this._onNotification.bind(this),
-    token
+    this._token
   );
   this._token = this._channel.getToken();
 }
@@ -40,6 +52,24 @@ function getStartOptions() {
 }
 Container.prototype.getStartOptions = getStartOptions;
 
+function deploy(deploymentId, callback) {
+  if (this.listeners('deploy').count > 1)
+    return callback(
+      Error('only one listener is supported for deploy event'));
+
+  if (this._deploymentId !== deploymentId) {
+    this._deploymentId = deploymentId;
+    return this.emit('deploy', this, callback);
+  }
+  process.nextTick(callback);
+}
+Container.prototype.deploy = deploy;
+
+function getDeploymentId() {
+  return this._deploymentId;
+}
+Container.prototype.getDeploymentId = getDeploymentId;
+
 /**
  * Close connection to remote exeutor
  *
@@ -63,8 +93,15 @@ function setStartOptions(options, callback) {
     return callback(
       Error('only one listener is supported for start-options-updated event'));
 
-  if (!lodash.isEqual(options, this._containerOptions)) {
-    this._containerOptions = options;
+  var changed = false;
+  for (var i in options) {
+    if (this._containerOptions[i] !== options[i]) {
+      this._containerOptions[i] = options[i];
+      changed = true;
+    }
+  }
+
+  if (changed) {
     return this.emit('start-options-updated', this, callback);
   }
   process.nextTick(callback);

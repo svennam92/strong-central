@@ -3,10 +3,14 @@
   "version": "1.0.0",
   "description": "StrongLoop Central",
   "main": "index.js",
+  "bin": {
+    "sl-central": "bin/sl-central.js"
+  },
   "scripts": {
-    "pretest": "eslint ./ && jscs ./",
+    "pretest": "eslint --ignore-path .gitignore . && jscs ./",
     "lint": "eslint ./ && jscs ./",
-    "test": "tap --timeout=200 test/test-*.*"
+    "test": "tap --timeout=200 test/test-*.*",
+    "cover": "test/cover.sh"
   },
   "repository": {
     "type": "git",
@@ -23,6 +27,7 @@
   "homepage": "https://github.com/strongloop/strong-central",
   "devDependencies": {
     "eslint": "^0.22.0",
+    "istanbul": "^0.3.15",
     "jscs": "^1.13.0",
     "mktmpdir": "^0.1.0",
     "tap": "^1.2.0"
@@ -32,6 +37,7 @@
     "debug": "^2.2.0",
     "express": "^4.12.4",
     "express-ws": "^0.2.6",
+    "fstream": "^1.0.6",
     "lodash": "^3.9.3",
     "loopback": "^2.18.0",
     "loopback-boot": "^2.8.0",
@@ -39,10 +45,13 @@
     "minkelite": "^1.1.0",
     "mkdirp": "^0.5.1",
     "posix-getopt": "^1.1.0",
+    "rimraf": "^2.4.0",
     "shelljs": "^0.5.0",
     "strong-control-channel": "^1.0.0",
+    "strong-fork-cicada": "^1.1.7",
     "strong-mesh-models": "^8.0.0",
     "strong-tunnel": "^1.1.0",
-    "strong-url-defaults": "^1.0.0"
+    "strong-url-defaults": "^1.0.0",
+    "tar": "^2.1.1"
   }
 }

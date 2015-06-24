@@ -1,5 +1,5 @@
 {
-  "excludeFiles": ["node_modules/**", ".strong-central"],
+  "excludeFiles": ["node_modules/**", "coverage", ".strong-central"],
   "disallowMixedSpacesAndTabs": true,
   "disallowKeywordsOnNewLine": [],
   "requireCurlyBraces": [

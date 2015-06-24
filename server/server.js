@@ -11,7 +11,6 @@ var express = require('express');
 var expressWs = require('express-ws');
 var fs = require('fs');
 var http = require('http');
-var makeAuthMiddleware = require('strong-mesh-models').auth;
 var mandatory = require('./util').mandatory;
 var path = require('path');
 var util = require('util');
@@ -62,7 +61,9 @@ function Server(options) {
     this._defaultEnv = {};
   }
 
-  var meshOptions = {};
+  var meshOptions = {
+    auth: process.env.STRONGLOOP_PM_HTTP_AUTH
+  };
   /* eslint-disable camelcase */
   // Instantiate minkelite so trace data can be stored
   this._minkelite = new MinkeLite({
@@ -78,7 +79,7 @@ function Server(options) {
     1440, // how long we retain data in the db
     stale_minutes: parseInt(options['trace.data.staleMinutes'], 10) || 1450,
     max_transaction_count: parseInt(options['trace.data.maxTransaction'],
-      10) || 30
+      10) || 30,
   });
   /* eslint-enable camelcase */
 
@@ -93,11 +94,16 @@ function Server(options) {
   this._serviceManager = new ServiceManager(this);
   this._meshApp = MeshServer(
     this._serviceManager, this._minkelite, meshOptions);
-  this._baseApp.use(makeAuthMiddleware(process.env.STRONGLOOP_PM_HTTP_AUTH));
+  this._baseApp.use('/artifacts/*', this._retrieveDriverArtifact.bind(this));
   this._baseApp.use(this._meshApp);
 }
 
 util.inherits(Server, EventEmitter);
+
+function getBaseDir() {
+  return this._baseDir;
+}
+Server.prototype.getBaseDir = getBaseDir;
 
 function getDefaultEnv() {
   return extend(this._defaultEnv);
@@ -154,7 +160,12 @@ function start(cb) {
   }
 
   function initDriver(callback) {
+    var artifactDir = path.resolve(
+      self._baseDir, 'artifacts'
+    );
+
     self._driver = new ExecutorDriver({
+      artifactDir: artifactDir,
       baseDir: self._baseDir,
       console: console,
       server: self,
@@ -254,8 +265,10 @@ function updateInstanceEnv(executorId, instanceId, env, callback) {
 }
 Server.prototype.updateInstanceEnv = updateInstanceEnv;
 
-function createInstance(executorId, instanceId, env, callback) {
-  this._driver.createInstance(executorId, instanceId, env, callback);
+function createInstance(executorId, instanceId, env, deploymentId, callback) {
+  this._driver.createInstance(
+    executorId, instanceId, env, deploymentId, callback
+  );
 }
 Server.prototype.createInstance = createInstance;
 
@@ -273,5 +286,39 @@ function setInstanceMetadata(instanceId, data, callback) {
   this._serviceManager.setInstanceMetadata(instanceId, data, callback);
 }
 Server.prototype.setInstanceMetadata = setInstanceMetadata;
+
+function prepareDriverArtifacts(commit, callback) {
+  this._driver.prepareDriverArtifact(commit, callback);
+}
+Server.prototype.prepareDriverArtifacts = prepareDriverArtifacts;
+
+function deploy(executorId, instanceId, commitId, callback) {
+  this._driver.deploy(executorId, instanceId, commitId, callback);
+}
+Server.prototype.deploy = deploy;
+
+function _retrieveDriverArtifact(req, res) {
+  var reqPath = req.baseUrl.split('/');
+
+  // Skip all path elements till /../../artifacts/
+  do {
+    var pathElement = reqPath.shift();
+    if (pathElement === undefined) {
+      debug('Invalid path: %s', req.baseUrl);
+      return res.status(404).send('Not found').end();
+    }
+  } while (pathElement !== 'artifacts');
+
+  var driver = reqPath.shift();
+  var instanceId = reqPath.shift();
+  var artifactId = reqPath.shift();
+
+  if (driver !== 'executor') {
+    return res.status(404).send('Invalid path').end();
+  }
+
+  this._driver.getDriverArtifact(instanceId, artifactId, req, res);
+}
+Server.prototype._retrieveDriverArtifact = _retrieveDriverArtifact;
 
 module.exports = Server;

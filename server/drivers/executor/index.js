@@ -1,17 +1,27 @@
 var Executor = require('./executor');
 var WebsocketRouter = require('strong-control-channel/ws-router');
 var async = require('async');
+var debug = require('debug')('strong-central:driver:executor');
+var fs = require('fs');
+var fstream = require('fstream');
+var mkdirp = require('mkdirp');
+var path = require('path');
+var tar = require('tar');
+var zlib = require('zlib');
 
 function ExecutorDriver(options) {
   this._baseDir = options.baseDir;
-  this._console = options.console;
   this._server = options.server;
+  this._artifactDir = options.artifactDir;
+  this._WebsocketRouter = options.WebsocketRouter || WebsocketRouter;
+  this._Container = options.Container;
+  this._Executor = options.Executor || Executor;
 
-  this._router = new WebsocketRouter(
+  this._router = new this._WebsocketRouter(
     this._server.getBaseApp(),
     'executor-control'
   );
-  this._instRouter = new WebsocketRouter(
+  this._instRouter = new this._WebsocketRouter(
     this._server.getBaseApp(),
     'supervisor-control'
   );
@@ -35,7 +45,8 @@ function reconnect(execInfo, instanceInfos, callback) {
       async.each(instanceInfos, connectInstance, callback);
       function connectInstance(instInfo, callback) {
         executor.createInstance(
-          instInfo.id, instInfo.env, instInfo.token, callback
+          instInfo.id, instInfo.env, instInfo.deploymentId,
+          instInfo.token, callback
         );
       }
     }
@@ -57,9 +68,14 @@ function createExecutor(execId, token, callback) {
     token = null;
   }
 
-  var executor = this._executors[execId] = new Executor(
-    this._server, this._router, this._instRouter, execId, token
-  );
+  var executor = this._executors[execId] = new this._Executor({
+    server: this._server,
+    execRouter: this._router,
+    instanceRouter: this._instRouter,
+    executorId: execId,
+    token: token,
+    Container: this._Container,
+  });
   executor.connect(callback);
 }
 ExecutorDriver.prototype.createExecutor = createExecutor;
@@ -77,8 +93,10 @@ function stop(callback) {
 }
 ExecutorDriver.prototype.stop = stop;
 
-function createInstance(executorId, instanceId, env, callback) {
-  this._executors[executorId].createInstance(instanceId, env, null, callback);
+function createInstance(executorId, instanceId, env, deploymentId, callback) {
+  this._executors[executorId].createInstance(
+    instanceId, env, deploymentId, null, callback
+  );
 }
 ExecutorDriver.prototype.createInstance = createInstance;
 
@@ -96,5 +114,90 @@ function _containerFor(executorId, instanceId) {
   return this._executors[executorId].containerFor(instanceId);
 }
 ExecutorDriver.prototype._containerFor = _containerFor;
+
+function prepareDriverArtifact(commit, callback) {
+  debug('Preparing commit %j', commit);
+  var packageDir = path.join(this._artifactDir, 'executor');
+  var packagePath = path.join(packageDir, commit.id + '.tgz');
+
+  mkdirp(packageDir, function(err) {
+    if (err) return callback(err);
+
+    var commitDirStream = fstream.Reader({
+      path: commit.dir,
+      type: 'Directory'
+    });
+    var tarStream = commitDirStream.pipe(tar.Pack({
+      noProprietary: true,
+    }));
+    var gzipStream = tarStream.pipe(zlib.createGzip());
+    gzipStream.pipe(fs.createWriteStream(packagePath));
+
+    tarStream.on('error', function(err) {
+      if (callback) callback(err);
+      callback = null;
+    });
+    gzipStream.on('error', function(err) {
+      if (callback) callback(err);
+      callback = null;
+    });
+
+    debug('Artifact saved: %s', packagePath);
+    gzipStream.on('end', function() {
+      if (callback) callback(null);
+      callback = null;
+    });
+  });
+}
+ExecutorDriver.prototype.prepareDriverArtifact = prepareDriverArtifact;
+
+function deploy(executorId, instanceId, deploymentId, callback) {
+  this._containerFor(executorId, instanceId).deploy(deploymentId, callback);
+}
+ExecutorDriver.prototype.deploy = deploy;
+
+function getDriverArtifact(instanceId, artifactId, req, res) {
+  var reqToken = req.get('x-mesh-token');
+  var executorId = null;
+  var executor = null;
+
+  for (var id in this._executors) {
+    if (reqToken === this._executors[id].getToken()) {
+      executorId = id;
+      executor = this._executors[id];
+    }
+  }
+
+  if (!executor) {
+    debug('Invalid executor id %s', executorId);
+    res.status(401).send('Invalid executor credentials\n').end();
+    return;
+  }
+
+  if (!this._containerFor(executorId, instanceId)) {
+    debug('Invalid instance id %s', instanceId);
+    res.status(401).send('Invalid executor credentials\n').end();
+    return;
+  }
+
+  var packageDir = path.join(this._artifactDir, 'executor');
+  var packagePath = path.join(packageDir, artifactId + '.tgz');
+  fs.stat(packagePath, function(err) {
+    if (err) {
+      debug('Artifact not found %s', packagePath);
+      res.status(404).send('Artifact not found\n').end();
+      return;
+    }
+
+    var fStream = fs.createReadStream(packagePath);
+    fStream.on('error', function(err) {
+      debug('Error reading file %j', err);
+      res.status(404).send('Artifact not found\n').end();
+    });
+
+    fStream.pipe(res);
+  });
+}
+ExecutorDriver.prototype.getDriverArtifact = getDriverArtifact;
 
 module.exports = ExecutorDriver;
