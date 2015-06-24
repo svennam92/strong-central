@@ -2,6 +2,10 @@ function MockServer() {
   this.getBaseApp = function() {
     return {};
   };
+
+  this.getHttpServer = function() {
+    return {};
+  };
 }
 
 function MockWsRouter() {

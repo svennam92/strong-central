@@ -18,6 +18,7 @@ function ExecutorDriver(options) {
   this._Executor = options.Executor || Executor;
 
   this._router = new this._WebsocketRouter(
+    this._server.getHttpServer(),
     this._server.getBaseApp(),
     'executor-control'
   );

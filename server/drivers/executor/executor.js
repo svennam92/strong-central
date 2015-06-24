@@ -55,7 +55,9 @@ function close(callback) {
   }, function(err) {
     if (err) return callback(err);
 
-    self._channel.close(callback);
+    self._channel.close(function() {
+      return callback(); // Discard err on discarded messages
+    });
   });
 }
 Executor.prototype.close = close;

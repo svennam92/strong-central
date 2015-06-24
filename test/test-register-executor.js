@@ -35,11 +35,11 @@ createCentralAndTest('register and connect executor',
     });
 
     t.test('shutdown central', function(tt) {
-      centralApp.stop(function() {
+      tt.plan(1);
+      centralApp.stop(function(err) {
+        tt.ifError(err);
         tt.end();
       });
     });
-
-    t.end();
   }
 );
