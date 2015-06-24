@@ -208,6 +208,8 @@ function _onStarting(msg, callback) {
   var self = this;
   this._hasStarted = true;
 
+  callback({message: 'ok'});
+
   async.series([
     server.updateExecutorData.bind(
       server, this._id, msg.hostname, msg.ip,
@@ -221,8 +223,15 @@ function _onStarting(msg, callback) {
       );
     }
   ], function(err) {
-    if (err) return callback({error: err.message});
-    callback({});
+    if (!err) return;
+    // XXX(sam) Don't pass our internal errors back to the executor, it can't
+    // do anything about them. Handle them here, if it is possible. Probably,
+    // it is not, they shouldn't have been passed to us.
+    //
+    // For example, server.updateExecutorData() should probably assert on
+    // failure and not pass its errors to us. If server can't handle its DB
+    // failures, the executor driver won't be able to.
+    console.error('Error handling executor started: %s', err.message);
   });
 }
 Executor.prototype._onStarting = _onStarting;
