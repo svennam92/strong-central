@@ -108,10 +108,22 @@ function stop(callback) {
 }
 ExecutorDriver.prototype.stop = stop;
 
-function createInstance(executorId, instanceId, env, deploymentId, callback) {
-  this._executors[executorId].createInstance(
-    instanceId, env, deploymentId, null, callback
-  );
+/**
+ * @param {object} options
+ * @param {string} options.executorId
+ * @param {string} options.instanceId
+ * @param {object} options.instEnv
+ * @param {string} options.token auth token for instance if available. Will be
+ * generated if not provided
+ * @param {object} options.startOptions
+ * @param {function} callback
+ */
+function createInstance(options, callback) {
+  //
+  //executorId, instanceId, env, deploymentId, callback) {
+  this._executors[options.executorId].createInstance(options, callback);
+  //  instanceId, env, deploymentId, null, callback
+  //);
 }
 ExecutorDriver.prototype.createInstance = createInstance;
 

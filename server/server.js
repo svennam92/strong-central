@@ -273,10 +273,8 @@ function onExecutorRequest(executorId, req, callback) {
 }
 Server.prototype.onExecutorRequest = onExecutorRequest;
 
-function createInstance(executorId, instanceId, env, deploymentId, callback) {
-  this._driver.createInstance(
-    executorId, instanceId, env, deploymentId, callback
-  );
+function createInstance(options, callback) {
+  this._driver.createInstance(options, callback);
 }
 Server.prototype.createInstance = createInstance;
 

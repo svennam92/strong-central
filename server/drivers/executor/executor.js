@@ -69,19 +69,23 @@ Executor.prototype.close = close;
  * Create an instance on the executor. This will send create commands if the
  * executor is up and running.
  *
- * @param {string} instanceId
- * @param {object} instEnv
- * @param {string} token auth token for instance if available. Will be generated
- * if not provided
+ * @param {object} options
+ * @param {string} options.instanceId
+ * @param {object} options.env
+ * @param {string} options.token auth token for instance if available. Will be
+ * generated if not provided
+ * @param {object} options.startOptions
  */
-function createInstance(instanceId, instEnv, deploymentId, token, callback) {
-  var container = this._containers[instanceId] = new this._Container({
+// instanceId, instEnv, deploymentId, token, callback
+function createInstance(options, callback) {
+  var container = this._containers[options.instanceId] = new this._Container({
     server: this._server,
     router: this._instRouter,
-    instanceId: instanceId,
-    env: instEnv,
-    deploymentId: deploymentId,
-    token: token,
+    instanceId: options.instanceId,
+    env: options.env,
+    deploymentId: options.deploymentId,
+    token: options.token,
+    startOptions: options.startOptions,
   });
 
   container.on('start-options-updated',

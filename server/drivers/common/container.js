@@ -23,7 +23,7 @@ function Container(options) {
 
   this._id = mandatory(options.instanceId);
   this._token = options.token;
-  this._containerOptions = {};
+  this._startOptions = options.startOptions;
   this._env = options.env || {};
   this._server = options.server;
   this._deploymentId = mandatory(options.deploymentId);
@@ -56,7 +56,7 @@ function getEnv() {
 Container.prototype.getEnv = getEnv;
 
 function getStartOptions() {
-  return this._containerOptions;
+  return this._startOptions;
 }
 Container.prototype.getStartOptions = getStartOptions;
 
@@ -104,8 +104,8 @@ function setStartOptions(options, callback) {
 
   var changed = false;
   for (var i in options) {
-    if (this._containerOptions[i] !== options[i]) {
-      this._containerOptions[i] = options[i];
+    if (this._startOptions[i] !== options[i]) {
+      this._startOptions[i] = options[i];
       changed = true;
     }
   }
