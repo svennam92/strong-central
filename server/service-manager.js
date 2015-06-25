@@ -1,12 +1,11 @@
 'use strict';
 
+var DeployReceiver = require('strong-deploy-receivers');
 var MeshServiceManager = require('strong-mesh-models').ServiceManager;
 var async = require('async');
-var cicada = require('strong-fork-cicada');
 var centralVersion = require('../package.json').version;
 var debug = require('debug')('strong-pm:service-manager');
 var fmt = require('util').format;
-var packReceiver = require('./pack-receiver');
 var path = require('path');
 var util = require('util');
 var versionApi = require('strong-mesh-models/package.json').apiVersion;
@@ -265,10 +264,10 @@ function onDeployment(service, req, res) {
   var svcDir = path.resolve(
     this._server.getBaseDir(), 'svc', String(service.id)
   );
-  var git = cicada(svcDir);
+  var deployReceiver = new DeployReceiver(svcDir);
   var self = this;
 
-  git.on('commit', function(commit) {
+  deployReceiver.on('commit', function(commit) {
     // Errors that occur within this block cannot be reported back on the deploy
     // request because cicada/tar deploy handled and closes it before this event
     // is emitted.
@@ -294,14 +293,7 @@ function onDeployment(service, req, res) {
     });
   });
 
-  if (req.method === 'PUT') {
-    debug('deploy accepted: npm package');
-    var tar = packReceiver(git);
-    return tar.handle(req, res);
-  }
-
-  debug('deploy accepted: git deploy');
-  return git.handle(req, res);
+  return deployReceiver.handle(req, res);
 }
 ServiceManager.prototype.onDeployment = onDeployment;
 
