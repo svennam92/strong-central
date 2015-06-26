@@ -8,7 +8,6 @@
   },
   "scripts": {
     "pretest": "eslint --ignore-path .gitignore . && jscs ./",
-    "lint": "eslint ./ && jscs ./",
     "test": "tap --timeout=200 test/test-*.*",
     "cover": "test/cover.sh"
   },
