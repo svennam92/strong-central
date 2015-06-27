@@ -1,4 +1,3 @@
-// XXX(sam) should be renamed to helper.js, its being run as a unit test ATM
 var Server = require('../server/server');
 var mktmpdir = require('mktmpdir');
 var test = require('tap').test;

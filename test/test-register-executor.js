@@ -1,6 +1,6 @@
 var Client = require('strong-mesh-models/client/client');
 var MockExecutor = require('./mock-executor');
-var createCentralAndTest = require('./test-helper').createCentralAndTest;
+var createCentralAndTest = require('./helper').createCentralAndTest;
 
 createCentralAndTest('register and connect executor',
   function(t, centralApp, centralUri) {

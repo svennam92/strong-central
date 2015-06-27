@@ -1,5 +1,5 @@
 var Client = require('strong-mesh-models/client/client');
-var createCentralAndTest = require('./test-helper').createCentralAndTest;
+var createCentralAndTest = require('./helper').createCentralAndTest;
 
 createCentralAndTest('register and connect executor',
   function(t, centralApp, centralUri) {
