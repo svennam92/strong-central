@@ -1,6 +1,8 @@
 var EventEmitter = require('events').EventEmitter;
+var assert = require('assert');
 var debug = require('debug')('strong-central:container');
 var lodash = require('lodash');
+var mandatory = require('../../util').mandatory;
 var util = require('util');
 
 /**
@@ -17,9 +19,17 @@ var util = require('util');
 function Container(options) {
   EventEmitter.call(this);
 
-  this._id = options.instanceId;
+  debug('Container %j', {
+    id: options.instanceId,
+    token: options.token,
+    startOptions: options.startOptions,
+    env: options.env,
+    deploymentId: options.deploymentId,
+  });
+
+  this._id = mandatory(options.instanceId);
   this._token = options.token;
-  this._containerOptions = {};
+  this._startOptions = options.startOptions;
   this._env = options.env || {};
   this._server = options.server;
   this._deploymentId = options.deploymentId;
@@ -48,7 +58,7 @@ function getEnv() {
 Container.prototype.getEnv = getEnv;
 
 function getStartOptions() {
-  return this._containerOptions;
+  return this._startOptions;
 }
 Container.prototype.getStartOptions = getStartOptions;
 
@@ -58,6 +68,7 @@ function deploy(deploymentId, callback) {
       Error('only one listener is supported for deploy event'));
 
   if (this._deploymentId !== deploymentId) {
+    assert(deploymentId);
     this._deploymentId = deploymentId;
     return this.emit('deploy', this, callback);
   }
@@ -95,8 +106,8 @@ function setStartOptions(options, callback) {
 
   var changed = false;
   for (var i in options) {
-    if (this._containerOptions[i] !== options[i]) {
-      this._containerOptions[i] = options[i];
+    if (this._startOptions[i] !== options[i]) {
+      this._startOptions[i] = options[i];
       changed = true;
     }
   }

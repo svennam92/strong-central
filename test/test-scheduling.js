@@ -1,5 +1,5 @@
 var Client = require('strong-mesh-models/client/client');
-var createCentralAndTest = require('./test-helper').createCentralAndTest;
+var createCentralAndTest = require('./helper').createCentralAndTest;
 
 createCentralAndTest('register and connect executor',
   function(t, centralApp, centralUri) {
@@ -26,9 +26,14 @@ createCentralAndTest('register and connect executor',
     });
 
     t.test('create a service', function(tt) {
-      client.serviceCreate('foo', 0, function(err) {
-        tt.ok(!err, 'Service should create without error');
-        tt.end();
+      client.serviceCreate('foo', 0, function(err, service) {
+        tt.ifError(err, 'Service should create without error');
+        service.updateAttributes({
+          deploymentInfo: {id: 'some commit'}
+        }, function(err) {
+          tt.ifError(err, 'Service should update without error');
+          tt.end();
+        });
       });
     });
 

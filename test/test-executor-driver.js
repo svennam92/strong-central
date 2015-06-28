@@ -64,7 +64,13 @@ function runTest(t, baseDir, artifactDir) {
     });
     driver.createExecutor('e1', 'executor-token', function(err) {
       tt.ifError(err);
-      driver.createInstance('e1', 'i1', {}, '', function(err) {
+      driver.createInstance({
+        executorId: 'e1',
+        instanceId: 'i1',
+        instEnv: {},
+        token: '',
+        startOptions: {},
+      }, function(err) {
         tt.ifError(err);
         tt.end();
       });

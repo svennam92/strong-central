@@ -8,7 +8,6 @@ var ServiceManager = require('./service-manager');
 var async = require('async');
 var debug = require('debug')('strong-central:server');
 var express = require('express');
-var expressWs = require('express-ws');
 var fs = require('fs');
 var http = require('http');
 var mandatory = require('./util').mandatory;
@@ -52,7 +51,6 @@ function Server(options) {
   this._cmdName = options.cmdName || 'sl-central';
   this._baseDir = path.resolve(options.baseDir || '.strong-central');
   this._listenPort = 'listenPort' in options ? options.listenPort : 8701;
-  this._httpServer = null;
   var envPath = path.resolve(this._baseDir, 'env.json');
 
   try {
@@ -96,6 +94,8 @@ function Server(options) {
     this._serviceManager, this._minkelite, meshOptions);
   this._baseApp.use('/artifacts/*', this._retrieveDriverArtifact.bind(this));
   this._baseApp.use(this._meshApp);
+
+  this._httpServer = http.createServer(this._baseApp);
 }
 
 util.inherits(Server, EventEmitter);
@@ -130,10 +130,7 @@ function start(cb) {
   function appListen(callback) {
     debug('Initializing http listen on port %d', self._listenPort);
     try {
-      var server = http.createServer(self._baseApp);
-      expressWs(self._baseApp, server);
-
-      server.listen(self._listenPort, function(err) {
+      self._httpServer.listen(self._listenPort, function(err) {
         if (err) return callback(err);
 
         var address = this.address();
@@ -145,9 +142,6 @@ function start(cb) {
           address.port
         );
 
-        // The HTTP server. This is used when stopping PM and to get the address
-        // that PM is listening on
-        self._httpServer = this;
         return callback();
       });
     } catch (err) {
@@ -197,8 +191,10 @@ function start(cb) {
   function done(err) {
     if (!err) return;
 
-    console.error('Listening failed with: %s', err.message);
+    console.error('Startup failed with: %s', err.message);
     self.stop();
+    // XXX(sam) It's weird to callback AND emit an error, also, maybe
+    // cb should happen after stop?
     self.emit('error', err);
     cb(err);
   }
@@ -206,32 +202,30 @@ function start(cb) {
 Server.prototype.start = start;
 
 function stop(cb) {
-  debug('stop');
   var shutdownTasks = [];
-  var self = this;
 
-  shutdownTasks.push(this._minkelite.shutdown.bind(this._minkelite));
+  debug('stop');
 
-  if (this._ipcControl) {
-    shutdownTasks.push(function(next) {
-      self._ipcControl.close(next);
-      self._ipcControl = null;
-    });
+  if (this._minkelite) {
+    shutdownTasks.push(this._minkelite.shutdown.bind(this._minkelite));
   }
 
   if (this._driver) {
     shutdownTasks.push(this._driver.stop.bind(this._driver));
   }
 
-  shutdownTasks.push(function(next) {
-    if (self._httpServer)
-      return self._httpServer.close(next);
-    next();
-  });
+  if (this._httpServer) {
+    shutdownTasks.push(this._httpServer.close.bind(this._httpServer));
+  }
 
   async.series(shutdownTasks, cb);
 }
 Server.prototype.stop = stop;
+
+function getHttpServer() {
+  return this._httpServer;
+}
+Server.prototype.getHttpServer = getHttpServer;
 
 function getBaseApp() {
   return this._baseApp;
@@ -239,6 +233,8 @@ function getBaseApp() {
 Server.prototype.getBaseApp = getBaseApp;
 
 function updateExecutorData(id, hostname, ip, capacity, metadata, callback) {
+  debug('updateExecutorData(%j, %s, %s, %d, %j)',
+        id, hostname, ip, capacity, metadata);
   this._serviceManager.updateExecutorData(
     id, hostname, ip, capacity, metadata, callback
   );
@@ -265,10 +261,13 @@ function updateInstanceEnv(executorId, instanceId, env, callback) {
 }
 Server.prototype.updateInstanceEnv = updateInstanceEnv;
 
-function createInstance(executorId, instanceId, env, deploymentId, callback) {
-  this._driver.createInstance(
-    executorId, instanceId, env, deploymentId, callback
-  );
+function onExecutorRequest(executorId, req, callback) {
+  this._driver.onExecutorRequest(executorId, req, callback);
+}
+Server.prototype.onExecutorRequest = onExecutorRequest;
+
+function createInstance(options, callback) {
+  this._driver.createInstance(options, callback);
 }
 Server.prototype.createInstance = createInstance;
 
@@ -282,8 +281,8 @@ function onInstanceNotification(instanceId, msg, callback) {
 }
 Server.prototype.onInstanceNotification = onInstanceNotification;
 
-function setInstanceMetadata(instanceId, data, callback) {
-  this._serviceManager.setInstanceMetadata(instanceId, data, callback);
+function setInstanceMetadata(instanceId, metadata, callback) {
+  this._serviceManager.setInstanceMetadata(instanceId, metadata, callback);
 }
 Server.prototype.setInstanceMetadata = setInstanceMetadata;
 
@@ -300,6 +299,8 @@ Server.prototype.deploy = deploy;
 function _retrieveDriverArtifact(req, res) {
   var reqPath = req.baseUrl.split('/');
 
+  debug('retrieveDriverArtifact: url %s', req.baseUrl);
+
   // Skip all path elements till /../../artifacts/
   do {
     var pathElement = reqPath.shift();
@@ -314,6 +315,7 @@ function _retrieveDriverArtifact(req, res) {
   var artifactId = reqPath.shift();
 
   if (driver !== 'executor') {
+    debug('driver is not executor: %s', driver);
     return res.status(404).send('Invalid path').end();
   }
 

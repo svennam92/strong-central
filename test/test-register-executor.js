@@ -1,6 +1,6 @@
 var Client = require('strong-mesh-models/client/client');
 var MockExecutor = require('./mock-executor');
-var createCentralAndTest = require('./test-helper').createCentralAndTest;
+var createCentralAndTest = require('./helper').createCentralAndTest;
 
 createCentralAndTest('register and connect executor',
   function(t, centralApp, centralUri) {
@@ -35,11 +35,11 @@ createCentralAndTest('register and connect executor',
     });
 
     t.test('shutdown central', function(tt) {
-      centralApp.stop(function() {
+      tt.plan(1);
+      centralApp.stop(function(err) {
+        tt.ifError(err);
         tt.end();
       });
     });
-
-    t.end();
   }
 );
