@@ -4,10 +4,12 @@ var EventEmitter = require('events').EventEmitter;
 var ExecutorDriver = require('./drivers/executor');
 var MeshServer = require('strong-mesh-models').meshServer;
 var MinkeLite = require('minkelite');
+var SQLite3 = require('loopback-connector-sqlite3');
 var ServiceManager = require('./service-manager');
 var async = require('async');
 var debug = require('debug')('strong-central:server');
 var express = require('express');
+var fmt = require('util').format;
 var fs = require('fs');
 var http = require('http');
 var mandatory = require('./util').mandatory;
@@ -39,6 +41,9 @@ var OPTIONS = {
   //                              db. Default 1450.
   //   trace.data.maxTransaction  Number of transactions returned by the
   //                              getTransation API (JS or HTTP). Default 30.
+  //   mesh.db.driver    Database driver name (sqlite3 (default) or memory).
+  //   mesh.db.filePath  File path where DB will be persisted on disk.
+  //                     Default ${baseDir}/strong-mesh.db
 };
 
 function Server(options) {
@@ -51,6 +56,27 @@ function Server(options) {
   this._listenPort = 'listenPort' in options ? options.listenPort : 8701;
   var envPath = path.resolve(this._baseDir, 'env.json');
 
+  var dbDriver = options['mesh.db.driver'] || 'sqlite3';
+  this._dataSourceConfig = null;
+  switch (dbDriver) {
+    case 'sqlite3':
+      this._dataSourceConfig = {
+        connector: SQLite3,
+        file: options['mesh.db.filePath'] ||
+          path.join(this._baseDir, 'strong-mesh.db'),
+      };
+      break;
+    case 'memory':
+      this._dataSourceConfig = {
+        connector: 'memory',
+        file: options['mesh.db.filePath'] ||
+          path.join(this._baseDir, 'strong-mesh.json'),
+      };
+      break;
+    default:
+      throw Error(fmt('data source %s not supported.', dbDriver));
+  }
+
   try {
     this._defaultEnv = JSON.parse(fs.readFileSync(envPath));
   } catch (e) {
@@ -58,7 +84,8 @@ function Server(options) {
   }
 
   var meshOptions = {
-    auth: process.env.STRONGLOOP_PM_HTTP_AUTH
+    auth: process.env.STRONGLOOP_PM_HTTP_AUTH,
+    db: this._dataSourceConfig,
   };
   /* eslint-disable camelcase */
   // Instantiate minkelite so trace data can be stored
@@ -78,12 +105,6 @@ function Server(options) {
       10) || 30,
   });
   /* eslint-enable camelcase */
-
-  if (!process.env.STRONGLOOP_MESH_DB) {
-    process.env.STRONGLOOP_MESH_DB =
-      'memory://' + path.join(this._baseDir, 'strong-central.json');
-  }
-  debug('Using STRONGLOOP_MESH_DB=%s', process.env.STRONGLOOP_MESH_DB);
 
   // The express app on which the rest of the middleware is mounted.
   this._baseApp = express();
@@ -109,7 +130,7 @@ function getDefaultEnv() {
 Server.prototype.getDefaultEnv = getDefaultEnv;
 
 function start(cb) {
-  debug('start');
+  debug('starting server');
 
   if (typeof cb !== 'function') {
     cb = function() {};
@@ -118,12 +139,18 @@ function start(cb) {
   var self = this;
 
   async.series([
+    initDatasource,
     appListen,
     initDriver,
     initEnv,
     reconnectExecutors,
     emitListeningSignal,
   ], done);
+
+  function initDatasource(callback) {
+    debug('updating database');
+    self._meshApp.dataSources.db.autoupdate(callback);
+  }
 
   function appListen(callback) {
     debug('Initializing http listen on port %d', self._listenPort);
@@ -135,6 +162,7 @@ function start(cb) {
   }
 
   function initEnv(callback) {
+    debug('loading initial environment');
     self._serviceManager.initEnv(self._meshApp, callback);
   }
 
@@ -174,6 +202,7 @@ function start(cb) {
   }
 
   function done(err) {
+    debug('startup complete');
     if (!err) return;
 
     console.error('Startup failed with: %s', err.message);

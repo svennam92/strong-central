@@ -37,7 +37,7 @@
     "lodash": "^3.9.3",
     "loopback": "^2.18.0",
     "loopback-boot": "^2.8.0",
-    "loopback-datasource-juggler": "^2.29.0",
+    "loopback-connector-sqlite3": "^1.0.0",
     "minkelite": "^1.1.0",
     "mkdirp": "^0.5.1",
     "posix-getopt": "^1.1.0",
