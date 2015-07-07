@@ -23,6 +23,7 @@ function ExecutorDriver(options) {
     'executor-control'
   );
   this._instRouter = new this._WebsocketRouter(
+    this._server.getHttpServer(),
     this._server.getBaseApp(),
     'supervisor-control'
   );
