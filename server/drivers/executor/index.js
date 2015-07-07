@@ -95,7 +95,7 @@ function createExecutor(execId, token, callback) {
     token: token,
     Container: this._Container,
   });
-  executor.connect(callback);
+  executor.listen(callback);
 }
 ExecutorDriver.prototype.createExecutor = createExecutor;
 

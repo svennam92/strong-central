@@ -37,7 +37,7 @@ function getToken() {
 }
 Executor.prototype.getToken = getToken;
 
-function connect(callback) {
+function listen(callback) {
   var channel = this._channel = this._router.createChannel(
     this._onNotification.bind(this),
     this._token
@@ -50,7 +50,7 @@ function connect(callback) {
     token: channel.getToken()
   });
 }
-Executor.prototype.connect = connect;
+Executor.prototype.listen = listen;
 
 function close(callback) {
   var self = this;
