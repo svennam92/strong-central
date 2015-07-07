@@ -1,6 +1,6 @@
+var Debug = require('debug');
 var EventEmitter = require('events').EventEmitter;
 var assert = require('assert');
-var debug = require('debug')('strong-central:container');
 var lodash = require('lodash');
 var mandatory = require('../../util').mandatory;
 var util = require('util');
@@ -19,14 +19,6 @@ var util = require('util');
 function Container(options) {
   EventEmitter.call(this);
 
-  debug('Container %j', {
-    id: options.instanceId,
-    token: options.token,
-    startOptions: options.startOptions,
-    env: options.env,
-    deploymentId: options.deploymentId,
-  });
-
   this._id = mandatory(options.instanceId);
   this._token = options.token;
   this._startOptions = options.startOptions;
@@ -39,6 +31,16 @@ function Container(options) {
     this._token
   );
   this._token = this._channel.getToken();
+  this.debug = Debug('strong-central:container:' + options.instanceId);
+
+  this.debug('Container %j', {
+    id: options.instanceId,
+    token: this._token,
+    startOptions: options.startOptions,
+    env: options.env,
+    deploymentId: options.deploymentId,
+  });
+
 }
 util.inherits(Container, EventEmitter);
 
@@ -149,7 +151,7 @@ function updateContainerMetadata(metadata, callback) {
 Container.prototype.updateContainerMetadata = updateContainerMetadata;
 
 function _onNotification(msg, callback) {
-  debug('Supervisor message: %j', msg);
+  this.debug('Supervisor message: %j', msg);
   this._server.onInstanceNotification(this._id, msg, callback);
 }
 Container.prototype._onNotification = _onNotification;
