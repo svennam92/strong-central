@@ -1,8 +1,8 @@
 'use strict';
 
 var Container = require('../common/container');
+var Debug = require('debug');
 var async = require('async');
-var debug = require('debug');
 var fmt = require('util').format;
 
 /**
@@ -24,7 +24,7 @@ function Executor(options) {
   this._token = options.token;
   this._hasStarted = false;
   this._containers = {};
-  this.debug = debug('strong-central:driver:executor:' + this._id);
+  this.debug = Debug('strong-central:driver:executor:' + this._id);
 
   this._Container = options.Container || Container;
 
@@ -193,7 +193,7 @@ function _request(msg, callback) {
 Executor.prototype._request = _request;
 
 function _onNotification(msg, callback) {
-  debug('on notification: %j', msg);
+  this.debug('on notification: %j', msg);
 
   switch (msg.cmd) {
     case 'starting':
