@@ -233,8 +233,9 @@ function getBaseApp() {
 Server.prototype.getBaseApp = getBaseApp;
 
 function updateExecutorData(id, hostname, ip, capacity, metadata, callback) {
-  debug('updateExecutorData(%j, %s, %s, %d, %j)',
+  debug('updateExecutorData: id %j hostname %j ip %j capacity %j meta %j',
         id, hostname, ip, capacity, metadata);
+
   this._serviceManager.updateExecutorData(
     id, hostname, ip, capacity, metadata, callback
   );
