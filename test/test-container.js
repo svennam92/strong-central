@@ -18,7 +18,7 @@ test('Test container', function(t) {
       token: 'container-token',
       startOptions: {},
     });
-    tt.equal(router.channel.args[1], 'container-token',
+    tt.equal(container._client.getToken(), 'container-token',
       'Initial token is passed to channel');
     tt.equal(container.getToken(), 'container-token',
       'Generated token is stored in container');
@@ -116,7 +116,7 @@ test('Test container', function(t) {
       tt.deepEqual(msg, {some: 'msg'});
       cb({reply: 'this one'});
     };
-    router.channel.args[0]({some: 'msg'}, function(res) {
+    router.channel.onRequest({some: 'msg'}, function(res) {
       tt.deepEqual(res, {reply: 'this one'});
       tt.end();
     });

@@ -22,7 +22,7 @@ function Executor(controlUri, token, onRequest, onConnected) {
     self.channel.request({
       cmd: 'starting',
       hostname: os.hostname(),
-      cpus: os.cpus(),
+      cpus: os.cpus().length,
       driver: 'MockDriver',
     }, function(rsp) {
       debug('started: %j', rsp);
