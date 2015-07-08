@@ -50,10 +50,6 @@ function reconnect(execInfo, instanceInfos, callback) {
       function connectInstance(instInfo, callback) {
         debug('with instance: %j', instInfo);
 
-        // FIXME @kraman, instances can exist with currentDeploymentId of '',
-        // I'm guarding here for the moment, because it seems from the
-        // comments in service-manager that that is allowed, but such an
-        // instance is undeployable.
         if (!instInfo.deploymentId) {
           console.error('Undeployable executor %d instance: %j',
             execInfo.id, instInfo);
@@ -96,6 +92,7 @@ function createExecutor(execId, token, callback) {
     Container: this._Container,
   });
   executor.listen(callback);
+  return executor;
 }
 ExecutorDriver.prototype.createExecutor = createExecutor;
 
@@ -123,11 +120,7 @@ ExecutorDriver.prototype.stop = stop;
  * @param {function} callback
  */
 function createInstance(options, callback) {
-  //
-  //executorId, instanceId, env, deploymentId, callback) {
-  this._executors[options.executorId].createInstance(options, callback);
-  //  instanceId, env, deploymentId, null, callback
-  //);
+  return this._executors[options.executorId].createInstance(options, callback);
 }
 ExecutorDriver.prototype.createInstance = createInstance;
 
@@ -186,6 +179,11 @@ function prepareDriverArtifact(commit, callback) {
   });
 }
 ExecutorDriver.prototype.prepareDriverArtifact = prepareDriverArtifact;
+
+function instanceRequest(executorId, instanceId, req, callback) {
+  this._executors[executorId].instanceRequest(instanceId, req, callback);
+}
+ExecutorDriver.prototype.instanceRequest = instanceRequest;
 
 function deploy(executorId, instanceId, deploymentId, callback) {
   this._containerFor(executorId, instanceId).deploy(deploymentId, callback);

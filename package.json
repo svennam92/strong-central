@@ -9,7 +9,7 @@
   },
   "scripts": {
     "pretest": "eslint --ignore-path .gitignore . && jscs ./",
-    "test": "tap --coverage --coverage-report=cobertura --timeout=200 test/test-*.*",
+    "test": "tap --bail --coverage --coverage-report=cobertura --timeout=200 test/test-*.*",
     "posttest": "nyc report --reporter=lcov && nyc report"
   },
   "repository": {

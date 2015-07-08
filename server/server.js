@@ -352,4 +352,9 @@ function _retrieveDriverArtifact(req, res) {
 }
 Server.prototype._retrieveDriverArtifact = _retrieveDriverArtifact;
 
+function instanceRequest(executorId, instanceId, req, callback) {
+  this._driver.instanceRequest(executorId, instanceId, req, callback);
+}
+Server.prototype.instanceRequest = instanceRequest;
+
 module.exports = Server;

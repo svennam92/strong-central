@@ -27,7 +27,7 @@ test('Test container', function(t) {
       'deployment matches');
     tt.deepEqual(container.getEnv(), {foo: 'bar'}, 'Env should match');
     tt.deepEqual(container.getStartOptions(), {}, 'No start opt should be set');
-    tt.end();
+    setImmediate(tt.end.bind(tt));
   });
 
   t.test('set start options', function(tt) {
@@ -106,6 +106,37 @@ test('Test container', function(t) {
         );
         tt.end();
       });
+    });
+  });
+
+  t.test('start-stop state and notifications', function(tt) {
+    tt.plan(9);
+
+    container.removeAllListeners();
+    tt.equal(container._hasStarted, false, 'Container should not be started');
+    server.onInstanceNotification = function(instanceId, msg, cb) {
+      tt.equal(instanceId, '1', 'Instance 1 is expected');
+      tt.equal(msg.cmd, 'started', 'Started command is expected');
+      cb();
+    };
+
+    router.client.channel.onRequest({
+      cmd: 'started',
+      pid: 1234,
+      pst: 12345
+    }, function() {
+      tt.equal(container._hasStarted, true, 'Container should be started');
+
+      // Exit notification emited when new channel is recieved
+      server.onInstanceNotification = function(instanceId, msg, cb) {
+        tt.equal(instanceId, '1', 'Instance 1 is expected');
+        tt.equal(msg.cmd, 'exit', 'Exit command is expected');
+        tt.equal(msg.pid, 1234);
+        tt.equal(msg.pst, 12345);
+        cb();
+      };
+      router.client.emit('new-channel', router.client.channel);
+      tt.equal(container._hasStarted, false, 'Container should not be started');
     });
   });
 

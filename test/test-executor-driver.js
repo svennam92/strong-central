@@ -53,6 +53,8 @@ function runTest(t, baseDir, artifactDir) {
   var driver = null;
   var expectedArtifact =
     path.join(artifactDir, 'executor', 'commithash.tgz');
+  var executorE1 = null;
+  var containerI1 = null;
 
   t.test('create driver', function(tt) {
     driver = new Driver({
@@ -62,9 +64,9 @@ function runTest(t, baseDir, artifactDir) {
       WebsocketRouter: MockWsRouter,
       Container: MockContainer
     });
-    driver.createExecutor('e1', 'executor-token', function(err) {
+    executorE1 = driver.createExecutor('e1', 'executor-token', function(err) {
       tt.ifError(err);
-      driver.createInstance({
+      containerI1 = driver.createInstance({
         executorId: 'e1',
         instanceId: 'i1',
         instEnv: {},
@@ -75,6 +77,90 @@ function runTest(t, baseDir, artifactDir) {
         tt.end();
       });
     });
+  });
+
+  function expectExecutorMsgOnly(tt, cmd) {
+    executorE1._request = function(req, cb) {
+      tt.equal(req.cmd, cmd, 'Expected executor message:' + cmd);
+      cb();
+    };
+    containerI1.request = function(req, cb) {
+      tt.fail('Container request not expected');
+      cb();
+    };
+  }
+
+  function expectContainerMsgOnly(tt, cmd) {
+    containerI1.request = function(req, cb) {
+      tt.equal(req.cmd, cmd, 'Expected container message:' + cmd);
+      cb();
+    };
+    executorE1._request = function(req, cb) {
+      tt.fail('Executor request not expected');
+      cb();
+    };
+  }
+
+  function expectExecutorAndContainerMsg(tt, execCmd, cmd) {
+    executorE1._request = function(req, cb) {
+      tt.equal(req.cmd, execCmd, 'Expected executor message:' + cmd);
+      cb();
+    };
+    containerI1.request = function(req, cb) {
+      tt.equal(req.cmd, cmd, 'Expected container message: ' + cmd);
+      cb();
+    };
+  }
+
+  t.test('instance requests: stop', function(tt) {
+    tt.plan(2);
+    expectExecutorMsgOnly(tt, 'container-stop');
+    driver.instanceRequest('e1', 'i1', {cmd: 'stop'}, function() {
+      tt.ok(true);
+    });
+  });
+
+  t.test('instance requests: start', function(tt) {
+    tt.plan(2);
+    expectExecutorMsgOnly(tt, 'container-start');
+    driver.instanceRequest('e1', 'i1', {cmd: 'start'}, function() {
+      tt.ok(true);
+    });
+  });
+
+  t.test('instance requests: restart', function(tt) {
+    tt.plan(2);
+    expectExecutorMsgOnly(tt, 'container-restart');
+    driver.instanceRequest('e1', 'i1', {cmd: 'restart'}, function() {
+      tt.ok(true);
+    });
+  });
+
+  t.test('instance requests: soft-stop', function(tt) {
+    tt.plan(3);
+    expectExecutorAndContainerMsg(tt, 'container-soft-stop', 'stop');
+    driver.instanceRequest('e1', 'i1', {cmd: 'soft-stop'}, function() {
+      tt.ok(true);
+    });
+  });
+
+  t.test('instance requests: soft-restart', function(tt) {
+    tt.plan(3);
+    expectExecutorAndContainerMsg(tt, 'container-soft-restart', 'stop');
+    driver.instanceRequest('e1', 'i1', {cmd: 'soft-restart'}, function() {
+      tt.ok(true);
+    });
+  });
+
+  t.test('instance requests: set-size', function(tt) {
+    tt.plan(2);
+    expectContainerMsgOnly(tt, 'set-size');
+    driver.instanceRequest('e1', 'i1',
+      {cmd: 'current', sub: 'set-size'},
+      function() {
+        tt.ok(true);
+      }
+    );
   });
 
   t.test('prepare driver artifact', function(tt) {
