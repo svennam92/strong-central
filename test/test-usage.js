@@ -1,13 +1,13 @@
 var path = require('path');
-var test = require('tap').test;
+var tap = require('tap');
 var shelljs = require('shelljs');
 
-console.log('working dir for %s is %s', process.argv[1], process.cwd());
+tap.comment('working dir for %s is %s', process.argv[1], process.cwd());
 
 // Prevent usage text from confusing the TAP parser
 console.log = console.error;
 
-test('Test CLI usage', function(t) {
+tap.test('Test CLI usage', function(t) {
   var cmd = path.join(__dirname, '../bin/sl-central.js');
 
   t.test('-h/--help/-hv', function(tt) {
