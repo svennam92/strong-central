@@ -13,8 +13,6 @@ var http = require('http');
 var mandatory = require('./util').mandatory;
 var path = require('path');
 var util = require('util');
-var versionApi = require('strong-mesh-models/package.json').version;
-var versionCentral = require('../package.json').version;
 
 // Extend base without modifying it.
 function extend(base, extra) {
@@ -130,20 +128,7 @@ function start(cb) {
   function appListen(callback) {
     debug('Initializing http listen on port %d', self._listenPort);
     try {
-      self._httpServer.listen(self._listenPort, function(err) {
-        if (err) return callback(err);
-
-        var address = this.address();
-        console.log(
-          '%s: StrongLoop Central v%s (API v%s) listening on port `%s`',
-          self._cmdName,
-          versionCentral,
-          versionApi,
-          address.port
-        );
-
-        return callback();
-      });
+      self._httpServer.listen(self._listenPort, callback);
     } catch (err) {
       callback(err);
     }
