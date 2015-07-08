@@ -18,7 +18,7 @@ var fmt = require('util').format;
  */
 function Executor(options) {
   this._server = options.server;
-  this._router = options.execRouter;
+  this._execRouter = options.executorRouter;
   this._instRouter = options.instanceRouter;
   this._id = options.executorId;
   this._token = options.token;
@@ -27,6 +27,7 @@ function Executor(options) {
   this.debug = Debug('strong-central:driver:executor:' + this._id);
 
   this._Container = options.Container || Container;
+  this._channel = null;
 
   this.debug('create: token %s', this._token);
 }
@@ -38,8 +39,8 @@ function getToken() {
 Executor.prototype.getToken = getToken;
 
 function listen(callback) {
-  var channel = this._channel = this._router.createChannel(
-    this._onNotification.bind(this),
+  var channel = this._channel = this._execRouter.createChannel(
+    this._onRequest.bind(this),
     this._token
   );
   this._token = this._channel.getToken();
@@ -192,15 +193,15 @@ function _request(msg, callback) {
 }
 Executor.prototype._request = _request;
 
-function _onNotification(msg, callback) {
-  this.debug('on notification: %j', msg);
+function _onRequest(msg, callback) {
+  this.debug('on request: %j', msg);
 
   switch (msg.cmd) {
     case 'starting':
       return this._onStarting(msg, callback);
   }
 }
-Executor.prototype._onNotification = _onNotification;
+Executor.prototype._onRequest = _onRequest;
 
 /**
  * When executor reports started state, store information reported by executor

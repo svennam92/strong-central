@@ -84,7 +84,7 @@ function getDeploymentId() {
 Container.prototype.getDeploymentId = getDeploymentId;
 
 /**
- * Close connection to remote exeutor
+ * Close connection to remote supervisor
  *
  * @param {function} callback fn(err)
  */
