@@ -4,7 +4,8 @@
   "description": "StrongLoop Central",
   "main": "index.js",
   "bin": {
-    "sl-central": "bin/sl-central.js"
+    "sl-central": "bin/sl-central.js",
+    "sl-central-install": "bin/sl-central-install.js"
   },
   "scripts": {
     "pretest": "eslint --ignore-path .gitignore . && jscs ./",
@@ -44,6 +45,7 @@
     "strong-control-channel": "^2.0.0",
     "strong-fork-cicada": "^1.1.7",
     "strong-mesh-models": "^8.0.0",
+    "strong-service-install": "^2.0.0-0",
     "strong-tunnel": "^1.1.0",
     "strong-url-defaults": "^1.0.0",
     "tar": "^2.1.1"
