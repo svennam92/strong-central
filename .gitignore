@@ -3,3 +3,4 @@ coverage
 minkelite.db
 node_modules
 npm-debug.log
+.nyc_output

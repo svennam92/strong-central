@@ -3,10 +3,12 @@
 'use strict';
 
 var Parser = require('posix-getopt').BasicParser;
+var Server = require('../server/server');
 var mkdirp = require('mkdirp').sync;
 var path = require('path');
 var fs = require('fs');
-var Server = require('../server/server');
+var versionApi = require('strong-mesh-models/package.json').version;
+var versionCentral = require('../package.json').version;
 
 function printHelp($0, prn) {
   var USAGE = fs.readFileSync(require.resolve('./sl-central.txt'), 'utf-8')
@@ -77,10 +79,10 @@ function main(argv, callback) {
   });
 
   app.on('listening', function(listenAddr) {
-    console.log('%s: listen on %s, work base is `%s`',
-      $0,
-      listenAddr.port,
-      base);
+    console.log('%s: StrongLoop Central v%s (API v%s) ' +
+                'listening on port `%s`, work base is `%s`',
+                $0, versionCentral, versionApi,
+                listenAddr.port, base);
   });
 
   app.start(callback);
