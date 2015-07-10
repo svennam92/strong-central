@@ -26,11 +26,16 @@ function Container(options) {
   this._server = options.server;
   this._deploymentId = options.deploymentId;
 
-  this._channel = options.router.createChannel(
+  this._client = options.router.acceptClient(
     this._onNotification.bind(this),
     this._token
   );
-  this._token = this._channel.getToken();
+  this._token = this._client.getToken();
+  // FIXME(sam) Container doesn't have a request() method... but if it did, it
+  // would have to listen on client 'new-channel' to get channels from the
+  // supervisor, closing the old one. See how Executor does it, this would be
+  // almost identical.
+  this._channel = null;
   this.debug = Debug('strong-central:container:' + options.instanceId);
 
   this.debug('Container %j', {
@@ -84,13 +89,13 @@ function getDeploymentId() {
 Container.prototype.getDeploymentId = getDeploymentId;
 
 /**
- * Close connection to remote exeutor
+ * Close connection to remote supervisor
  *
  * @param {function} callback fn(err)
  */
 function close(callback) {
   this.removeAllListeners();
-  this._channel.close(callback);
+  this._client.close(callback);
 }
 Container.prototype.close = close;
 

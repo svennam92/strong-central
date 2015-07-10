@@ -17,7 +17,7 @@ function ExecutorDriver(options) {
   this._Container = options.Container;
   this._Executor = options.Executor || Executor;
 
-  this._router = new this._WebsocketRouter(
+  this._execRouter = new this._WebsocketRouter(
     this._server.getHttpServer(),
     this._server.getBaseApp(),
     'executor-control'
@@ -89,7 +89,7 @@ function createExecutor(execId, token, callback) {
 
   var executor = this._executors[execId] = new this._Executor({
     server: this._server,
-    execRouter: this._router,
+    executorRouter: this._execRouter,
     instanceRouter: this._instRouter,
     executorId: execId,
     token: token,

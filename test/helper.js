@@ -11,6 +11,7 @@ function createCentralAndTest(title, testFn) {
 
       var centralApp = new Server({
         baseDir: dir,
+        listenPort: 0,
       });
       centralApp.on('listening', function() {
         var centralUri = new url.parse('http://127.0.0.1');

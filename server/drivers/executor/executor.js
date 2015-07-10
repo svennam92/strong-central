@@ -2,6 +2,7 @@
 
 var Container = require('../common/container');
 var Debug = require('debug');
+var assert = require('assert');
 var async = require('async');
 var fmt = require('util').format;
 
@@ -18,7 +19,7 @@ var fmt = require('util').format;
  */
 function Executor(options) {
   this._server = options.server;
-  this._router = options.execRouter;
+  this._execRouter = options.executorRouter;
   this._instRouter = options.instanceRouter;
   this._id = options.executorId;
   this._token = options.token;
@@ -27,6 +28,7 @@ function Executor(options) {
   this.debug = Debug('strong-central:driver:executor:' + this._id);
 
   this._Container = options.Container || Container;
+  this._channel = null;
 
   this.debug('create: token %s', this._token);
 }
@@ -38,31 +40,55 @@ function getToken() {
 Executor.prototype.getToken = getToken;
 
 function listen(callback) {
-  var channel = this._channel = this._router.createChannel(
-    this._onNotification.bind(this),
+  this.debug('listen: token %s', this._token);
+
+  var client = this._client = this._execRouter.acceptClient(
+    this._onRequest.bind(this),
     this._token
   );
-  this._token = this._channel.getToken();
+  var token = this._client.getToken();
 
-  this.debug('connect: token %s', this._token);
+  if (this._token) {
+    assert.equal(token, this._token);
+  } else {
+    this._token = token;
+    this.debug('allocated token %s', this._token);
+  }
+
+  var self = this;
+  client.on('new-channel', function(channel) {
+    self.debug('new-channel %s old channel %s started? %j',
+      channel.getToken(),
+      self._channel ? self._channel.getToken() : '(none)',
+      self._hasStarted
+      );
+    if (self._channel)
+      self._channel.close();
+    self._channel = channel;
+    self._hasStarted = false;
+  });
+
+  // TBD - how/when will we decide that an executor is dead/unavailable?
 
   callback(null, this, {
-    token: channel.getToken()
+    token: client.getToken()
   });
 }
 Executor.prototype.listen = listen;
 
 function close(callback) {
+  this.debug('close');
+
   var self = this;
 
+  // XXX(sam) can new containers be created while we are closing? Maybe
+  // we should make Executor as closed immediately?
   async.each(Object.keys(this._containers), function(cId, callback) {
     self._containers[cId].close(callback);
   }, function(err) {
     if (err) return callback(err);
 
-    self._channel.close(function() {
-      return callback(); // Discard err on discarded messages
-    });
+    self._client.close(callback);
   });
 }
 Executor.prototype.close = close;
@@ -192,15 +218,15 @@ function _request(msg, callback) {
 }
 Executor.prototype._request = _request;
 
-function _onNotification(msg, callback) {
-  this.debug('on notification: %j', msg);
+function _onRequest(msg, callback) {
+  this.debug('on request: %j', msg);
 
   switch (msg.cmd) {
     case 'starting':
       return this._onStarting(msg, callback);
   }
 }
-Executor.prototype._onNotification = _onNotification;
+Executor.prototype._onRequest = _onRequest;
 
 /**
  * When executor reports started state, store information reported by executor
