@@ -111,8 +111,6 @@ function Server(options) {
     this._serviceManager, this._minkelite, meshOptions);
   this._baseApp.use('/artifacts/*', this._retrieveDriverArtifact.bind(this));
   this._baseApp.use(this._meshApp);
-
-  this._httpServer = http.createServer(this._baseApp);
 }
 
 util.inherits(Server, EventEmitter);
@@ -135,6 +133,7 @@ function start(cb) {
   }
 
   var self = this;
+  this._httpServer = http.createServer(this._baseApp);
 
   async.series([
     initDatasource,
