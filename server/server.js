@@ -87,9 +87,8 @@ function Server(options) {
     auth: process.env.STRONGLOOP_PM_HTTP_AUTH,
     db: this._dataSourceConfig,
   };
-  /* eslint-disable camelcase */
-  // Instantiate minkelite so trace data can be stored
-  this._minkelite = new MinkeLite({
+
+  this._traceOptions = {
     start_server: !!process.env.STRONGLOOP_DEBUG_MINKELITE,
     server_port: options['trace.debugServerPort'] || 8103,
 
@@ -103,8 +102,7 @@ function Server(options) {
     stale_minutes: parseInt(options['trace.data.staleMinutes'], 10) || 1450,
     max_transaction_count: parseInt(options['trace.data.maxTransaction'],
       10) || 30,
-  });
-  /* eslint-enable camelcase */
+  };
 
   // The express app on which the rest of the middleware is mounted.
   this._baseApp = express();
@@ -140,6 +138,7 @@ function start(cb) {
 
   async.series([
     initDatasource,
+    initTracing,
     appListen,
     initDriver,
     initEnv,
@@ -150,6 +149,22 @@ function start(cb) {
   function initDatasource(callback) {
     debug('updating database');
     self._meshApp.dataSources.db.autoupdate(callback);
+  }
+
+  function initTracing(callback) {
+    /* eslint-disable camelcase */
+    // Instantiate minkelite so trace data can be stored
+    self._minkelite = new MinkeLite(self._traceOptions);
+    /* eslint-enable camelcase */
+    self._minkelite.on('error', function(err) {
+      if (callback) callback(err);
+      callback = null;
+    });
+
+    self._minkelite.on('ready', function() {
+      if (callback) callback();
+      callback = null;
+    });
   }
 
   function appListen(callback) {
