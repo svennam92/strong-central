@@ -4,7 +4,7 @@ var MeshServiceManager = require('strong-mesh-models').ServiceManager;
 var async = require('async');
 var cicada = require('strong-fork-cicada');
 var centralVersion = require('../package.json').version;
-var debug = require('debug')('strong-pm:service-manager');
+var debug = require('debug')('strong-central:service-manager');
 var fmt = require('util').format;
 var packReceiver = require('./pack-receiver');
 var path = require('path');
@@ -377,3 +377,9 @@ function setInstanceMetadata(instanceId, data, callback) {
   });
 }
 ServiceManager.prototype.setInstanceMetadata = setInstanceMetadata;
+
+function onCtlRequest(service, instance, req, callback) {
+  debug('onCtlRequest(%j, %j, %j)', service, instance, req);
+  this._server.instanceRequest(instance.executorId, instance.id, req, callback);
+}
+ServiceManager.prototype.onCtlRequest = onCtlRequest;

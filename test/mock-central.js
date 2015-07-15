@@ -13,10 +13,11 @@ function MockServer() {
 
 function MockWsRouter(/*server, app, path*/) {
   this.args = arguments;
-  this.channel = null;
+  this.client = null;
 
   this.acceptClient = function(onRequest, token) {
-    return new MockClient(onRequest, token, this);
+    this.client = new MockClient(onRequest, token, this);
+    return this.client;
   };
 }
 
@@ -45,12 +46,13 @@ MockClient.prototype.close = function(cb) {
 
 function MockWsChannel(onRequest) {
   this.onRequest = onRequest;
-
 }
 
 MockWsChannel.prototype.getToken = function() {
   return this.token;
 };
+
+MockWsChannel.prototype.close = function() {};
 
 exports.MockServer = MockServer;
 exports.MockWsRouter = MockWsRouter;

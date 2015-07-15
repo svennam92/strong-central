@@ -5,6 +5,7 @@ var Debug = require('debug');
 var assert = require('assert');
 var async = require('async');
 var fmt = require('util').format;
+var extend = require('../../util').extend;
 
 /**
  * Proxy to the executor running on a remote machine.
@@ -153,11 +154,15 @@ function _sendContainerCreateCmd(container, callback) {
 Executor.prototype._sendContainerCreateCmd = _sendContainerCreateCmd;
 
 function _sendContainerEnvCmd(container, callback) {
+  var self = this;
   this._request({
-    cmd: 'container-env-set',
+    cmd: 'container-set-env',
     id: container.getId(),
     env: container.getEnv(),
-  }, callback);
+  }, function(err) {
+    if (err) return callback(err);
+    self.instanceRequest(container.getId(), {cmd: 'soft-restart'}, callback);
+  });
 }
 Executor.prototype._sendContainerEnvCmd = _sendContainerEnvCmd;
 
@@ -224,9 +229,24 @@ function _onRequest(msg, callback) {
   switch (msg.cmd) {
     case 'starting':
       return this._onStarting(msg, callback);
+    case 'container-exit':
+      return this._onContainerExit(msg, callback);
   }
 }
 Executor.prototype._onRequest = _onRequest;
+
+/**
+ * Inform container that supervisor has exited so it can record the event
+ * and update its state.
+ *
+ * @param {object} msg
+ * @param {function} callback
+ * @private
+ */
+function _onContainerExit(msg, callback) {
+  this.containerFor(msg.id).onStop(callback);
+}
+Executor.prototype._onContainerExit = _onContainerExit;
 
 /**
  * When executor reports started state, store information reported by executor
@@ -268,3 +288,40 @@ function _onStarting(msg, callback) {
   });
 }
 Executor.prototype._onStarting = _onStarting;
+
+function instanceRequest(instanceId, req, callback) {
+  var self = this;
+
+  this.debug('instanceRequest -> %s, %j', instanceId, req);
+  function cbWrapper() {
+    self.debug('instanceRequest <- %j', arguments);
+    callback.apply(null, arguments);
+  }
+
+  switch (req.cmd) {
+    case 'stop':
+    case 'start':
+    case 'restart':
+    case 'soft-stop':
+    case 'soft-restart':
+      var executorRequest = extend(req, {
+        cmd: 'container-' + req.cmd,
+        id: instanceId,
+      });
+      var container = this.containerFor(instanceId);
+      async.series([
+        this._request.bind(this, executorRequest),
+        function(callback) {
+          if (req.cmd === 'soft-stop' || req.cmd === 'soft-restart') {
+            return container.request({cmd: 'stop'}, callback);
+          }
+          setImmediate(callback);
+        }
+      ], cbWrapper);
+      break;
+    default:
+      if (req.cmd === 'current') req.cmd = req.sub;
+      this.containerFor(instanceId).request(req, cbWrapper);
+  }
+}
+Executor.prototype.instanceRequest = instanceRequest;

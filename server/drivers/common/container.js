@@ -1,6 +1,7 @@
 var Debug = require('debug');
 var EventEmitter = require('events').EventEmitter;
 var assert = require('assert');
+var async = require('async');
 var lodash = require('lodash');
 var mandatory = require('../../util').mandatory;
 var util = require('util');
@@ -25,18 +26,36 @@ function Container(options) {
   this._env = options.env || {};
   this._server = options.server;
   this._deploymentId = options.deploymentId;
+  this.debug = Debug('strong-central:container:' + options.instanceId);
 
   this._client = options.router.acceptClient(
     this._onNotification.bind(this),
     this._token
   );
-  this._token = this._client.getToken();
-  // FIXME(sam) Container doesn't have a request() method... but if it did, it
-  // would have to listen on client 'new-channel' to get channels from the
-  // supervisor, closing the old one. See how Executor does it, this would be
-  // almost identical.
+  var token = this._client.getToken();
+
+  if (this._token) {
+    assert.equal(token, this._token);
+  } else {
+    this._token = token;
+    this.debug('allocated token %s', this._token);
+  }
+
   this._channel = null;
-  this.debug = Debug('strong-central:container:' + options.instanceId);
+  var self = this;
+  this._client.on('new-channel', function(channel) {
+    self.debug('new-channel %s old channel %s started? %j',
+      channel.getToken(),
+      self._channel ? self._channel.getToken() : '(none)',
+      self._hasStarted
+      );
+    if (self._channel)
+      self._channel.close();
+    self._channel = channel;
+    self.onStop(function(err) {
+      if (err) self.debug('ERR: Unable to record old processes as stopped');
+    });
+  });
 
   this.debug('Container %j', {
     id: options.instanceId,
@@ -45,7 +64,7 @@ function Container(options) {
     env: options.env,
     deploymentId: options.deploymentId,
   });
-
+  this._hasStarted = false;
 }
 util.inherits(Container, EventEmitter);
 
@@ -111,18 +130,27 @@ function setStartOptions(options, callback) {
     return callback(
       Error('only one listener is supported for start-options-updated event'));
 
-  var changed = false;
+  var changes = {};
   for (var i in options) {
     if (this._startOptions[i] !== options[i]) {
       this._startOptions[i] = options[i];
-      changed = true;
+      changes[i] = options[i];
     }
   }
 
-  if (changed) {
-    return this.emit('start-options-updated', this, callback);
+  var tasks = [];
+  if (Object.keys(changes).length > 0) {
+    tasks.push(this.emit.bind(this, 'start-options-updated', this));
   }
-  process.nextTick(callback);
+  if (changes.hasOwnProperty('size')) {
+    tasks.push(this.request.bind(this, {cmd: 'set-size', size: changes.size}));
+  }
+  if (changes.hasOwnProperty('trace')) {
+    tasks.push(this.request.bind(this,
+      {cmd: 'tracing', enabled: changes.trace})
+    );
+  }
+  async.series(tasks, callback);
 }
 Container.prototype.setStartOptions = setStartOptions;
 
@@ -155,10 +183,56 @@ function updateContainerMetadata(metadata, callback) {
 }
 Container.prototype.updateContainerMetadata = updateContainerMetadata;
 
+/**
+ * Set container state to stopped and record all sub-processes as exited.
+ *
+ * @param {function} callback fn(err)
+ */
+function onStop(callback) {
+  // Note: there is a potential race-condition between the started message and
+  // getting an exited notification from a new channel being created. This check
+  // is intended to catch this and make sure we dont accidently record a newly
+  // started supervisor as being stopped
+  if (!this._hasStarted) return callback();
+
+  this._hasStarted = false;
+  this._onNotification({
+    cmd: 'exit',
+    wid: 0,
+    pid: this._masterPid,
+    pst: this._masterStartTime,
+    reason: 'Exit',
+    suicide: false,
+  }, callback);
+}
+Container.prototype.onStop = onStop;
+
 function _onNotification(msg, callback) {
-  this.debug('Supervisor message: %j', msg);
+  this.debug('Message from supervisor: %j', msg);
+  var self = this;
+
+  if (msg.cmd === 'started') {
+    // Before we record the newly started processes, make sure the old processes
+    // are recorded as being stopped.
+    this.onStop(function(err) {
+      if (err) self.debug('ERR: Unable to record old processes as stopped');
+
+      self._hasStarted = true;
+      self._masterPid = msg.pid;
+      self._masterStartTime = msg.pst;
+    });
+  }
   this._server.onInstanceNotification(this._id, msg, callback);
 }
 Container.prototype._onNotification = _onNotification;
+
+function request(req, callback) {
+  if (!this._hasStarted) {
+    this.debug('request: not started, discarding %j', req);
+    return callback();
+  }
+  this._channel.request(req, callback);
+}
+Container.prototype.request = request;
 
 module.exports = Container;
