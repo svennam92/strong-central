@@ -12,6 +12,7 @@ var path = require('path');
 var prepareCommit = require('./prepare').prepare;
 var util = require('util');
 var versionApi = require('strong-mesh-models/package.json').apiVersion;
+var _ = require('lodash');
 
 module.exports = ServiceManager;
 
@@ -127,7 +128,7 @@ function onExecutorDestroy(executor, callback) {
 }
 ServiceManager.prototype.onExecutorDestroy = onExecutorDestroy;
 
-function updateExecutorData(id, hostname, ip, capacity, metadata, callback) {
+function updateExecutorData(id, hostname, addr, capacity, metadata, callback) {
   var models = this._meshApp.models;
   var Executor = models.Executor;
 
@@ -135,7 +136,7 @@ function updateExecutorData(id, hostname, ip, capacity, metadata, callback) {
     if (err) callback(err);
 
     exec.hostname = hostname;
-    exec.address = ip;
+    exec.address = addr;
     exec.totalCapacity = capacity;
     for (var i in metadata) {
       exec.metadata[i] = metadata[i];
@@ -361,13 +362,11 @@ function onInstanceUpdate(instance, isNew, callback) {
   var server = this._server;
   var instId = instance.id;
   var execId = instance.executorId;
-  var models = this._meshApp.models;
-  var Service = models.ServerService;
 
-  return Service.findById(instance.serverServiceId, function(err, service) {
+  return instance.serverService(function(err, service) {
     if (err) return callback(err);
     if (!service) return callback(Error(fmt(
-        'Invalid instance %s: service %snot found',
+        'Invalid instance %s: service %s not found',
         instance.id, instance.serverServiceId))
     );
 
@@ -461,3 +460,117 @@ function onCtlRequest(service, instance, req, callback) {
   this._server.instanceRequest(instance.executorId, instance.id, req, callback);
 }
 ServiceManager.prototype.onCtlRequest = onCtlRequest;
+
+function getGatewayInfos(callback) {
+  this._meshApp.models.Gateway.find(function(err, gateways) {
+    if (err) return callback(err);
+
+    async.map(gateways, function(gw, callback) {
+      callback(null, {id: gw.id, token: gw.token});
+    }, callback);
+  });
+}
+ServiceManager.prototype.getGatewayInfos = getGatewayInfos;
+
+function onGatewayUpdate(gateway, isNew, callback) {
+  debug('onGatewayUpdate(%j, %s)', gateway, isNew);
+  if (isNew) {
+    return this._server.createGateway(gateway.id, function(err, data) {
+      if (err) return callback(err);
+      gateway.token = data.token;
+      gateway.save(callback);
+    });
+  }
+  setImmediate(callback);
+}
+ServiceManager.prototype.onGatewayUpdate = onGatewayUpdate;
+
+function onGatewayDestroy(gateway, callback) {
+  debug('onGatewayDestroy(%j)', gateway);
+  this._server.destroyGateway(gateway.id, callback);
+}
+ServiceManager.prototype.onGatewayDestroy = onGatewayDestroy;
+
+function onGatewayConnect(gatewayId, callback) {
+  debug('onGatewayConnect(%s)', gatewayId);
+  var Service = this._meshApp.models.ServerService;
+  var self = this;
+
+  Service.find({}, function(err, services) {
+    if (err) return callback(err);
+    async.map(services, self._getServiceEndpointInfo.bind(self),
+      function(err, serviceEndpoints) {
+        if (err) return callback(err);
+        self._server.updateGateway(gatewayId, serviceEndpoints, callback);
+      }
+    );
+  });
+}
+ServiceManager.prototype.onGatewayConnect = onGatewayConnect;
+
+function onProcessListen(proc, callback) {
+  debug('onProcessListen(%j)', proc);
+  var self = this;
+  if (!proc) console.trace();
+
+  proc.serviceInstance(function(err, instance) {
+    if (err) return callback(err);
+    instance.serverService(function(err, service) {
+      if (err) return callback(err);
+      self._getServiceEndpointInfo(service, function(err, endpointInfo) {
+        if (err) return callback(err);
+        self._server.updateGateways(endpointInfo, callback);
+      });
+    });
+  });
+}
+ServiceManager.prototype.onProcessListen = onProcessListen;
+
+function onProcessExit(proc, callback) {
+  debug('onProcessExit(%j)', proc);
+  this.onProcessListen(proc, callback);
+}
+ServiceManager.prototype.onProcessExit = onProcessExit;
+
+function _getServiceEndpointInfo(service, callback) {
+  service.executors(function(err, executors) {
+    if (err) return callback(err);
+    async.map(executors, getExecutorInstanceEndpoints, function(err, eps) {
+      if (err) return callback(err);
+      var endpoints = _(eps).flattenDeep().uniq().map(function(ep) {
+        ep = ep.split(':');
+        return {
+          host: ep[0],
+          port: ep[1],
+          serviceId: service.id,
+        };
+      });
+      callback(null, {serviceId: service.id, endpoints: endpoints.value()});
+    });
+
+    function getExecutorInstanceEndpoints(executor, callback) {
+      executor.instances({where: {serverServiceId: service.id}},
+        function(err, instances) {
+          if (err) return callback(err);
+          async.map(instances, getInstanceEndpoints, callback);
+        }
+      );
+
+      function getInstanceEndpoints(instance, callback) {
+        instance.processes({where: {stopReason: ''}}, function(err, processes) {
+          if (err) return callback(err);
+          // Get flattened/unique list of listening endpoints for the instance
+          var endpoints = _(processes).map('listeningSockets').flatten().uniq();
+
+          // Remap the endpoints with the executors routable addr
+          endpoints = endpoints.map(function(e) {
+            return executor.address + ':' + e.port;
+          });
+
+          callback(null, endpoints.value());
+        });
+      }
+    }
+  });
+}
+ServiceManager.prototype._getServiceEndpointInfo = _getServiceEndpointInfo;

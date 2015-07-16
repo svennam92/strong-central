@@ -68,18 +68,19 @@ tap.test('executor', {timeout: 2000}, function(t) {
       cmd: 'starting',
       cpus: '3',
       hostname: 'exec-host',
-      ip: '1.2.3.4',
+      address: '1.2.3.4',
       driver: 'direct',
     };
 
-    server.updateExecutorData = function(execId, host, ip, cpus, meta, cb) {
-      t.equal(execId, 'exec-id', 'update exec id');
-      t.equal(host, starting.hostname);
-      t.equal(ip, starting.ip);
-      t.equal(cpus, starting.cpus);
-      t.match(meta, {remoteDriver: starting.driver}, 'update exec meta');
-      return cb();
-    };
+    server.updateExecutorData =
+      function(execId, host, address, cpus, meta, cb) {
+        t.equal(execId, 'exec-id', 'update exec id');
+        t.equal(host, starting.hostname);
+        t.equal(address, starting.address);
+        t.equal(cpus, starting.cpus);
+        t.match(meta, {remoteDriver: starting.driver}, 'update exec meta');
+        return cb();
+      };
 
     t.on('end', function() {
       server.updateExecutorData = null;
@@ -91,7 +92,7 @@ tap.test('executor', {timeout: 2000}, function(t) {
       cmd: 'starting',
       cpus: '3',
       hostname: 'exec-host',
-      ip: '1.2.3.4',
+      address: '1.2.3.4',
       driver: 'direct',
     }, function(rsp) {
       t.equal(rsp.message, 'ok', 'starting ok');
