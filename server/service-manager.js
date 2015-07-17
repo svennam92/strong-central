@@ -146,6 +146,7 @@ ServiceManager.prototype.updateInstanceMetadata = updateInstanceMetadata;
 function getApiVersionInfo(callback) {
   var models = this._meshApp.models;
   callback(null, new models.Api({
+    serverName: 'strong-central',
     version: centralVersion,
     serverPid: process.pid,
     apiVersion: versionApi,
