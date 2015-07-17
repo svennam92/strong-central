@@ -207,7 +207,7 @@ function _schedule(service, callback) {
 
     function ensureInstanceExists(executor, callback) {
       Instance.findOne(
-        {executorId: executor.id, serverServiceId: service.id},
+        {where: {executorId: executor.id, serverServiceId: service.id}},
         function(err, inst) {
           if (err) return callback(err);
           if (inst) return callback(null, inst);
