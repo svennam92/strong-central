@@ -96,6 +96,12 @@ function createExecutor(execId, token, callback) {
 }
 ExecutorDriver.prototype.createExecutor = createExecutor;
 
+function destroyExecutor(execId, callback) {
+  this._executors[execId].close(callback);
+  this._executors[execId] = null;
+}
+ExecutorDriver.prototype.destroyExecutor = destroyExecutor;
+
 /**
  * Shutdown the driver and all its connections. Does not shutdown the executors.
  * @param {function} callback fn(err)

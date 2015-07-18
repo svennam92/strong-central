@@ -280,6 +280,11 @@ function createExecutor(executorId, callback) {
 }
 Server.prototype.createExecutor = createExecutor;
 
+function destroyExecutor(executorId, callback) {
+  this._driver.destroyExecutor(executorId, callback);
+}
+Server.prototype.destroyExecutor = destroyExecutor;
+
 function port() {
   return this._httpServer.address().port;
 }

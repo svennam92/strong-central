@@ -111,6 +111,12 @@ function onExecutorRequest(id, req, callback) {
 }
 ServiceManager.prototype.onExecutorRequest = onExecutorRequest;
 
+function onExecutorDestroy(executor, callback) {
+  debug('onExecutorDestroy(%j)', executor);
+  return this._server.destroyExecutor(executor.id, callback);
+}
+ServiceManager.prototype.onExecutorDestroy = onExecutorDestroy;
+
 function updateExecutorData(id, hostname, ip, capacity, metadata, callback) {
   var models = this._meshApp.models;
   var Executor = models.Executor;
