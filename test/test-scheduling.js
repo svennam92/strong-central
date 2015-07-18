@@ -15,16 +15,6 @@ createCentralAndTest('register and connect executor',
       });
     });
 
-    t.test('register executor 2 via REST', function(tt) {
-      client.executorCreate(null, function(err, exec) {
-        tt.ok(!err, 'Executor should register without error');
-        tt.ok(exec.id, 'Executor should have an id');
-        tt.ok(exec.token, 'Executor should have a token');
-        tt.equal(exec.driver, 'executor');
-        tt.end();
-      });
-    });
-
     t.test('create a service', function(tt) {
       client.serviceCreate('foo', 0, function(err, service) {
         tt.ifError(err, 'Service should create without error');
@@ -34,6 +24,16 @@ createCentralAndTest('register and connect executor',
           tt.ifError(err, 'Service should update without error');
           tt.end();
         });
+      });
+    });
+
+    t.test('register executor 2 via REST', function(tt) {
+      client.executorCreate(null, function(err, exec) {
+        tt.ok(!err, 'Executor should register without error');
+        tt.ok(exec.id, 'Executor should have an id');
+        tt.ok(exec.token, 'Executor should have a token');
+        tt.equal(exec.driver, 'executor');
+        tt.end();
       });
     });
 
