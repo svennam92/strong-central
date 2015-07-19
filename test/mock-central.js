@@ -9,6 +9,10 @@ function MockServer() {
   this.getHttpServer = function() {
     return {};
   };
+
+  this.markOldProcessesStopped = function(instanceId, callback) {
+    return callback();
+  };
 }
 
 function MockWsRouter(/*server, app, path*/) {

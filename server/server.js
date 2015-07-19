@@ -362,4 +362,9 @@ function instanceRequest(executorId, instanceId, req, callback) {
 }
 Server.prototype.instanceRequest = instanceRequest;
 
+function markOldProcessesStopped(instanceId, callback) {
+  this._serviceManager.markOldProcessesStopped(instanceId, callback);
+}
+Server.prototype.markOldProcessesStopped = markOldProcessesStopped;
+
 module.exports = Server;
