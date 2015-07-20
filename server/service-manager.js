@@ -2,12 +2,14 @@
 
 var MeshServiceManager = require('strong-mesh-models').ServiceManager;
 var async = require('async');
-var cicada = require('strong-fork-cicada');
 var centralVersion = require('../package.json').version;
+var cicada = require('strong-fork-cicada');
 var debug = require('debug')('strong-central:service-manager');
+var extend = require('./util').extend;
 var fmt = require('util').format;
 var packReceiver = require('./pack-receiver');
 var path = require('path');
+var prepareCommit = require('./prepare').prepare;
 var util = require('util');
 var versionApi = require('strong-mesh-models/package.json').apiVersion;
 
@@ -283,17 +285,21 @@ function onDeployment(service, req, res) {
     debug('commit %j for service %s', commit, service.id);
 
     debug('preparing service %s', service);
+    commit.env = extend({}, service.env);
 
-    self._server.prepareDriverArtifacts(commit, function(err) {
-      if (err) return console.error('Unable to prepare driver artifact');
+    prepareCommit(commit, function(err) {
+      if (err) return console.error('Unable to prepare commit');
+      self._server.prepareDriverArtifacts(commit, function(err) {
+        if (err) return console.error('Unable to prepare driver artifact');
 
-      service.updateAttributes({
-        deploymentInfo: {id: commit.id}
-      }, function(err) {
-        if (err) {
-          console.error('Error while updating deployment info: %j', err);
-          return;
-        }
+        service.updateAttributes({
+          deploymentInfo: {id: commit.id}
+        }, function(err) {
+          if (err) {
+            console.error('Error while updating deployment info: %j', err);
+            return;
+          }
+        });
       });
     });
   });
