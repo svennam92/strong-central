@@ -154,15 +154,11 @@ function _sendContainerCreateCmd(container, callback) {
 Executor.prototype._sendContainerCreateCmd = _sendContainerCreateCmd;
 
 function _sendContainerEnvCmd(container, callback) {
-  var self = this;
   this._request({
     cmd: 'container-set-env',
     id: container.getId(),
     env: container.getEnv(),
-  }, function(err) {
-    if (err) return callback(err);
-    self.instanceRequest(container.getId(), {cmd: 'soft-restart'}, callback);
-  });
+  }, callback);
 }
 Executor.prototype._sendContainerEnvCmd = _sendContainerEnvCmd;
 
