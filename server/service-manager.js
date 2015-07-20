@@ -385,6 +385,30 @@ function setInstanceMetadata(instanceId, data, callback) {
 }
 ServiceManager.prototype.setInstanceMetadata = setInstanceMetadata;
 
+function markOldProcessesStopped(instanceId, callback) {
+  var models = this._meshApp.models;
+  var Instance = models.ServiceInstance;
+  var Process = models.ServiceProcess;
+
+  Instance.findById(instanceId, function(err, instance) {
+    if (err) return callback(err);
+
+    instance.processes({where: {stopReason: ''}}, function(err, processes) {
+      if (err) return callback(err);
+      async.each(processes, function(proc, callback) {
+        Process.recordExit(instanceId, {
+          pid: proc.pid,
+          wid: proc.workerId,
+          pst: +proc.startTime,
+          reason: 'Disconnected from Central server',
+          suicide: false,
+        }, callback);
+      }, callback);
+    });
+  });
+}
+ServiceManager.prototype.markOldProcessesStopped = markOldProcessesStopped;
+
 function onCtlRequest(service, instance, req, callback) {
   debug('onCtlRequest(%j, %j, %j)', service, instance, req);
   this._server.instanceRequest(instance.executorId, instance.id, req, callback);

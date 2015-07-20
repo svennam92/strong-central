@@ -52,13 +52,11 @@ test('Test container', function(t) {
         tt.deepEqual(container.getStartOptions(), {a: 1},
           'start opt should be set'
         );
-        tt.end();
       });
     });
   });
 
   t.test('set env', function(tt) {
-    tt.plan(5);
     container.on('env-updated', function(_c, cb) {
       tt.strictEqual(container, _c, 'Container should match');
       tt.deepEqual(container.getEnv(), {foo: 'bar', bar: 'baz'},
@@ -78,7 +76,6 @@ test('Test container', function(t) {
         tt.deepEqual(container.getEnv(), {foo: 'bar', bar: 'baz'},
           'env should be set'
         );
-        tt.end();
       });
     });
   });
@@ -104,7 +101,6 @@ test('Test container', function(t) {
         tt.deepEqual(container.getDeploymentId(), 'deployment1',
           'deployment id should be set'
         );
-        tt.end();
       });
     });
   });
@@ -128,11 +124,8 @@ test('Test container', function(t) {
       tt.equal(container._hasStarted, true, 'Container should be started');
 
       // Exit notification emited when new channel is recieved
-      server.onInstanceNotification = function(instanceId, msg, cb) {
+      server.markOldProcessesStopped = function(instanceId, cb) {
         tt.equal(instanceId, '1', 'Instance 1 is expected');
-        tt.equal(msg.cmd, 'exit', 'Exit command is expected');
-        tt.equal(msg.pid, 1234);
-        tt.equal(msg.pst, 12345);
         cb();
       };
       router.client.emit('new-channel', router.client.channel);
@@ -149,7 +142,6 @@ test('Test container', function(t) {
     };
     router.channel.onRequest({some: 'msg'}, function(res) {
       tt.deepEqual(res, {reply: 'this one'});
-      tt.end();
     });
   });
 

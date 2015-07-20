@@ -52,8 +52,10 @@ function Container(options) {
     if (self._channel)
       self._channel.close();
     self._channel = channel;
-    self.onStop(function(err) {
-      if (err) self.debug('ERR: Unable to record old processes as stopped');
+    self._hasStarted = false;
+    self._server.markOldProcessesStopped(self._id, function(err) {
+      if (err)
+        self.debug('Error marking old processes as stopped: %s', err.message);
     });
   });
 
@@ -183,44 +185,12 @@ function updateContainerMetadata(metadata, callback) {
 }
 Container.prototype.updateContainerMetadata = updateContainerMetadata;
 
-/**
- * Set container state to stopped and record all sub-processes as exited.
- *
- * @param {function} callback fn(err)
- */
-function onStop(callback) {
-  // Note: there is a potential race-condition between the started message and
-  // getting an exited notification from a new channel being created. This check
-  // is intended to catch this and make sure we dont accidently record a newly
-  // started supervisor as being stopped
-  if (!this._hasStarted) return callback();
-
-  this._hasStarted = false;
-  this._onNotification({
-    cmd: 'exit',
-    wid: 0,
-    pid: this._masterPid,
-    pst: this._masterStartTime,
-    reason: 'Exit',
-    suicide: false,
-  }, callback);
-}
-Container.prototype.onStop = onStop;
-
 function _onNotification(msg, callback) {
   this.debug('Message from supervisor: %j', msg);
   var self = this;
 
   if (msg.cmd === 'started') {
-    // Before we record the newly started processes, make sure the old processes
-    // are recorded as being stopped.
-    this.onStop(function(err) {
-      if (err) self.debug('ERR: Unable to record old processes as stopped');
-
-      self._hasStarted = true;
-      self._masterPid = msg.pid;
-      self._masterStartTime = msg.pst;
-    });
+    self._hasStarted = true;
   }
   this._server.onInstanceNotification(this._id, msg, callback);
 }
