@@ -81,7 +81,7 @@ Options:
   -v,--version        Print version and exit.
   -b,--base BASE      Base directory to work in (default `.strong-executor`).
   -C,--control URL    Connect to central at this URL.
-  -P,--base-port PORT Applications run on `PORT + service ID` (default 3000).
+  -P,--base-port PORT Applications run on `PORT + instance ID` (default 3000).
 
 The base directory is used to save deployed applications, for working
 directories, and for any other files the executor needs to create.
@@ -101,7 +101,7 @@ Options:
                       that executor is run as, see --user).
   -C,--control URL    Connect to central at this URL.
   -u,--user USER      User to run executor as (default is strong-executor).
-  -P,--base-port PORT Applications run on PORT + service ID (default 3000).
+  -P,--base-port PORT Applications run on PORT + instance ID (default 3000).
   -n,--dry-run        Don't write any files.
   -j,--job-file FILE  Path of Upstart job to create (default is
                       `/etc/init/strong-executor.conf`).
