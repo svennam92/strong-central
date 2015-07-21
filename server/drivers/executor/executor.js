@@ -240,7 +240,7 @@ Executor.prototype._onRequest = _onRequest;
  * @private
  */
 function _onContainerExit(msg, callback) {
-  this.containerFor(msg.id).onStop(callback);
+  this._server.markOldProcessesStopped(msg.id, callback);
 }
 Executor.prototype._onContainerExit = _onContainerExit;
 
