@@ -1,6 +1,113 @@
 # strong-central
 
-StrongLoop Central
+This module works in concert with `strong-executor` and `strong-mesh-models` 
+to provide "mesh" functionality that enables you to deploy an application 
+once and have it deploy to multiple hosts running StrongLoop Executor.
+
+**NOTE**: These modules and their commands work have only been tested
+on Linux systems, but should work on OS X and Windows.
+
+- [Basic procedure](#basic-procedure)
+- [Command reference](#command-reference)
+  - [sl-central](#sl-central)
+  - [sl-central-install](#sl-central-install)
+  - [sl-executor](#sl-executor)
+  - [sl-executor-install](#sl-executor-install)
+  - [sl-meshadm](#sl-meshadm)
+  - [sl-meshctl](#sl-meshctl)
+
+## Basic procedure
+
+### 1. Install StrongLoop Central
+
+```
+$ npm install -g strong-central 
+```
+This makes the commands `sl-central` and `sl-central-install` available.
+
+### 2. Start StrongLoop Central
+
+Install and start as a service: 
+```
+$ sudo sl-central-install
+$ sudo /sbin/initctl start strong-central
+```
+
+OR run it as a transient process:
+```
+$ sl-central
+```
+
+### 3. Install strong-mesh-models
+You can install this on the same host as StrongLoop Central, or on a different system.
+
+```
+$ npm install -g strong-mesh-models
+```
+This makes the commands `sl-meshadm` and `sl-meshctl` available.
+
+### 4. Create an executor 
+```
+$ sl-meshadm -C http://<central_host>:8701 exec-create
+```
+OR if you installed strong-mesh-models on the same host as StrongLoop Central:
+```
+$ sl-meshadm exec-create
+```
+
+Where:
+- `<central_host>` is the host where you installed StrongLoop Central.
+
+You’ll see a response in the console like:
+```
+Created Executor id: 1 token: "7cfec40c3188b4cca2dabcddceb10cc900910ed633b524cc"
+```
+
+### 5. Install executor 
+
+On each production host where you want to run Process Manager and host applications, install executor:
+
+```
+$ npm install -g strong-executor 
+```
+This makes the commands `sl-executor` and `sl-executor-install` available.
+
+### 6. Run executor
+
+Install and start as a service:
+```
+$ sudo sl-executor-install
+$ sudo /sbin/initctl start strong-executor
+```
+OR run as a transient process:
+```
+$ sl-executor -C http://<token>@<central_host>:8701
+```
+
+Where:
+- `<token>` is the executor token generated in step 4.
+- `<central_host>` is the host where you installed StrongLoop Central.
+
+You’ll see a response in the console like:
+```
+sl-executor: connected to http://<token>@<central_host>:8701
+```
+
+### 7. Deploy an app from your machine to StrongLoop Central 
+
+```
+$ slc deploy http://<central_host>:8701
+```
+
+This will deploy the app to all the executor hosts.
+
+### 8. Use the `sl-meshctl` command to control your applications
+
+```
+$ sl-meshctl -C http://<central_host>:8701 
+```
+
+**NOTE** This command has the same sub-commands and options as [slc ctl](http://docs.strongloop.com/display/NODE/slc+ctl).
 
 ## Command reference
 
