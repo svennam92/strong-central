@@ -192,7 +192,7 @@ function _onNotification(msg, callback) {
   if (msg.cmd === 'started') {
     self._hasStarted = true;
   }
-  this._server.onInstanceNotification(this._id, msg, callback);
+  this.emit('notification', this._id, msg, callback);
 }
 Container.prototype._onNotification = _onNotification;
 

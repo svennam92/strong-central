@@ -115,7 +115,19 @@ ServiceManager.prototype.onExecutorRequest = onExecutorRequest;
 
 function onExecutorDestroy(executor, callback) {
   debug('onExecutorDestroy(%j)', executor);
-  return this._server.destroyExecutor(executor.id, callback);
+  var self = this;
+
+  executor.instances(function(err, instances) {
+    if (err) return callback(err);
+    async.each(instances, destroyInstance, function(err) {
+      if (err) return callback(err);
+      return self._server.destroyExecutor(executor.id, callback);
+    });
+  });
+
+  function destroyInstance(instance, callback) {
+    instance.destroy(callback);
+  }
 }
 ServiceManager.prototype.onExecutorDestroy = onExecutorDestroy;
 
@@ -265,7 +277,38 @@ ServiceManager.prototype._schedule = _schedule;
 
 function onServiceDestroy(service, callback) {
   debug('onServiceDestroy(%j)', service);
-  setImmediate(callback);
+  var models = this._meshApp.models;
+
+  service.instances(function(err, instances) {
+    if (err) return callback(err);
+    async.each(instances, cleanupInstance, callback);
+  });
+
+  function cleanupInstance(instance, callback) {
+    instance.processes(function(err, processes) {
+      if (err) return callback(err);
+      async.each(processes, cleanupProcess, function(err) {
+        if (err) return callback(err);
+        instance.destroy(callback);
+      });
+    });
+  }
+
+  function cleanupProcess(proc, callback) {
+    var Metric = models.ServiceMetric;
+    var Profile = models.ProfileData;
+    var ExpressRec = models.ExpressUsageRecord;
+    var AgentTrace = models.AgentTrace;
+    async.series([
+      Metric.destroyAll.bind(Metric, {processId: proc.id}),
+      Profile.destroyAll.bind(Profile, {serviceProcessId: proc.id}),
+      ExpressRec.destroyAll.bind(ExpressRec, {processId: proc.id}),
+      AgentTrace.destroyAll.bind(AgentTrace, {processId: proc.id}),
+    ], function(err) {
+      if (err) return callback(err);
+      proc.destroy(callback);
+    });
+  }
 }
 ServiceManager.prototype.onServiceDestroy = onServiceDestroy;
 
@@ -370,7 +413,7 @@ ServiceManager.prototype.onInstanceUpdate = onInstanceUpdate;
 
 function onInstanceDestroy(instance, callback) {
   debug('onInstanceDestroy(%j)', instance);
-  setImmediate(callback);
+  this._server.destroyInstance(instance.executorId, instance.id, callback);
 }
 ServiceManager.prototype.onInstanceDestroy = onInstanceDestroy;
 

@@ -305,6 +305,11 @@ function createInstance(options, callback) {
 }
 Server.prototype.createInstance = createInstance;
 
+function destroyInstance(executorId, instanceId, callback) {
+  this._driver.destroyInstance(executorId, instanceId, callback);
+}
+Server.prototype.destroyInstance = destroyInstance;
+
 function setInstanceOptions(executorId, instanceId, options, callback) {
   this._driver.setInstanceOptions(executorId, instanceId, options, callback);
 }

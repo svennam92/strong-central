@@ -98,7 +98,7 @@ ExecutorDriver.prototype.createExecutor = createExecutor;
 
 function destroyExecutor(execId, callback) {
   this._executors[execId].close(callback);
-  this._executors[execId] = null;
+  delete this._executors[execId];
 }
 ExecutorDriver.prototype.destroyExecutor = destroyExecutor;
 
@@ -130,22 +130,35 @@ function createInstance(options, callback) {
 }
 ExecutorDriver.prototype.createInstance = createInstance;
 
+function destroyInstance(executorId, instanceId, callback) {
+  if (!this._executors[executorId]) return setImmediate(callback);
+  this._executors[executorId].destroyInstance(instanceId, callback);
+}
+ExecutorDriver.prototype.destroyInstance = destroyInstance;
+
 function onExecutorRequest(executorId, req, callback) {
   this._executors[executorId].onRequest(req, callback);
 }
 ExecutorDriver.prototype.onExecutorRequest = onExecutorRequest;
 
 function updateInstanceEnv(executorId, instanceId, env, callback) {
-  this._containerFor(executorId, instanceId).setEnv(env, callback);
+  var container = this._containerFor(executorId, instanceId);
+  if (!container) return setImmediate(callback);
+
+  container.setEnv(env, callback);
 }
 ExecutorDriver.prototype.updateInstanceEnv = updateInstanceEnv;
 
 function setInstanceOptions(executorId, instanceId, options, callback) {
-  this._containerFor(executorId, instanceId).setStartOptions(options, callback);
+  var container = this._containerFor(executorId, instanceId);
+  if (!container) return setImmediate(callback);
+
+  container.setStartOptions(options, callback);
 }
 ExecutorDriver.prototype.setInstanceOptions = setInstanceOptions;
 
 function _containerFor(executorId, instanceId) {
+  if (!this._executors[executorId]) return null;
   return this._executors[executorId].containerFor(instanceId);
 }
 ExecutorDriver.prototype._containerFor = _containerFor;
@@ -192,7 +205,10 @@ function instanceRequest(executorId, instanceId, req, callback) {
 ExecutorDriver.prototype.instanceRequest = instanceRequest;
 
 function deploy(executorId, instanceId, deploymentId, callback) {
-  this._containerFor(executorId, instanceId).deploy(deploymentId, callback);
+  var container = this._containerFor(executorId, instanceId);
+  if (!container) return setImmediate(callback);
+
+  container.deploy(deploymentId, callback);
 }
 ExecutorDriver.prototype.deploy = deploy;
 
@@ -205,6 +221,7 @@ function getDriverArtifact(instanceId, artifactId, req, res) {
   debug('get artifact: %s', artifactId);
 
   for (var id in this._executors) {
+    if (!this._executors.hasOwnProperty(id)) continue;
     if (reqToken === this._executors[id].getToken()) {
       executorId = id;
       executor = this._executors[id];
