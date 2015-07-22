@@ -119,15 +119,11 @@ function onExecutorDestroy(executor, callback) {
 
   executor.instances(function(err, instances) {
     if (err) return callback(err);
-    async.each(instances, destroyInstance, function(err) {
+    async.each(instances, self._cleanupInstance.bind(self), function(err) {
       if (err) return callback(err);
       return self._server.destroyExecutor(executor.id, callback);
     });
   });
-
-  function destroyInstance(instance, callback) {
-    instance.destroy(callback);
-  }
 }
 ServiceManager.prototype.onExecutorDestroy = onExecutorDestroy;
 
@@ -277,22 +273,24 @@ ServiceManager.prototype._schedule = _schedule;
 
 function onServiceDestroy(service, callback) {
   debug('onServiceDestroy(%j)', service);
-  var models = this._meshApp.models;
+  var self = this;
 
   service.instances(function(err, instances) {
     if (err) return callback(err);
-    async.each(instances, cleanupInstance, callback);
+    async.each(instances, self._cleanupInstance.bind(self), callback);
   });
+}
+ServiceManager.prototype.onServiceDestroy = onServiceDestroy;
 
-  function cleanupInstance(instance, callback) {
-    instance.processes(function(err, processes) {
+function _cleanupInstance(instance, callback) {
+  var models = this._meshApp.models;
+  instance.processes(function(err, processes) {
+    if (err) return callback(err);
+    async.each(processes, cleanupProcess, function(err) {
       if (err) return callback(err);
-      async.each(processes, cleanupProcess, function(err) {
-        if (err) return callback(err);
-        instance.destroy(callback);
-      });
+      instance.destroy(callback);
     });
-  }
+  });
 
   function cleanupProcess(proc, callback) {
     var Metric = models.ServiceMetric;
@@ -310,7 +308,7 @@ function onServiceDestroy(service, callback) {
     });
   }
 }
-ServiceManager.prototype.onServiceDestroy = onServiceDestroy;
+ServiceManager.prototype._cleanupInstance = _cleanupInstance;
 
 function onDeployment(service, req, res) {
   debug('onDeployment(%j)', service);
