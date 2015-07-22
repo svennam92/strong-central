@@ -159,5 +159,28 @@ test('Test container', {timeout: 2000}, function(t) {
   });
 
 
+  t.test('disconnect', function(tt) {
+    var stopped = server.markOldProcessesStopped;
+    var err;
+    server.markOldProcessesStopped = function(id, cb) {
+      tt.equal(container._id, id, 'processes stopped');
+      return cb(err);
+    };
+
+    tt.plan(5);
+
+    container.disconnect();
+    container.disconnect();
+    router.client.emit('new-channel', router.client.channel);
+    container.disconnect();
+    err = new Error('some lb error');
+    container.disconnect();
+
+    tt.on('end', function() {
+      server.markOldProcessesStopped = stopped;
+    });
+  });
+
+
   t.end();
 });
