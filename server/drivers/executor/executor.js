@@ -120,6 +120,7 @@ function createInstance(options, callback) {
     this._sendContainerOptionsCmd.bind(this));
   container.on('env-updated', this._sendContainerEnvCmd.bind(this));
   container.on('deploy', this._sendContainerDeployCmd.bind(this));
+  container.on('notification', this._onInstanceNotification.bind(this));
   this._sendContainerCreateCmd(container, function(err) {
     if (err) return callback(err);
     callback(null, {
@@ -129,6 +130,19 @@ function createInstance(options, callback) {
   return container;
 }
 Executor.prototype.createInstance = createInstance;
+
+function destroyInstance(instanceId, callback) {
+  if (!this._containers[instanceId]) return setImmediate(callback);
+
+  var self = this;
+  this._sendContainerDestroyCmd(instanceId, function(err) {
+    if (err) return callback(err);
+
+    delete self._containers[instanceId];
+    callback();
+  });
+}
+Executor.prototype.destroyInstance = destroyInstance;
 
 function containerFor(instanceId) {
   return this._containers[instanceId];
@@ -311,7 +325,7 @@ function instanceRequest(instanceId, req, callback) {
           if (req.cmd === 'soft-stop' || req.cmd === 'soft-restart') {
             return container.request({cmd: 'stop'}, callback);
           }
-          setImmediate(callback);
+          if (callback) setImmediate(callback);
         }
       ], cbWrapper);
       break;
@@ -321,3 +335,11 @@ function instanceRequest(instanceId, req, callback) {
   }
 }
 Executor.prototype.instanceRequest = instanceRequest;
+
+function _onInstanceNotification(instanceId, msg, callback) {
+  // Don't propogate message if container was deleted
+  if (!this._containers[instanceId]) return setImmediate(callback);
+
+  this._server.onInstanceNotification(instanceId, msg, callback);
+}
+Executor.prototype._onInstanceNotification = _onInstanceNotification;
