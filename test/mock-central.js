@@ -1,4 +1,5 @@
 var EventEmitter = require('events').EventEmitter;
+var assert = require('assert');
 var inherits = require('util').inherits;
 
 function MockServer() {
@@ -57,6 +58,11 @@ MockWsChannel.prototype.getToken = function() {
 };
 
 MockWsChannel.prototype.close = function() {};
+
+MockWsChannel.prototype.on = function(event, listener) {
+  assert.equal(event, 'error', 'error is the only supported event');
+  this.onError = listener;
+};
 
 exports.MockServer = MockServer;
 exports.MockWsRouter = MockWsRouter;

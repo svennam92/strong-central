@@ -28,7 +28,7 @@ test('Test container', {timeout: 2000}, function(t) {
       'deployment matches');
     tt.deepEqual(container.getEnv(), {foo: 'bar'}, 'Env should match');
     tt.deepEqual(container.getStartOptions(), {}, 'No start opt should be set');
-    setImmediate(tt.end.bind(tt));
+    tt.end();
   });
 
 
@@ -44,9 +44,9 @@ test('Test container', {timeout: 2000}, function(t) {
     container.setStartOptions({a: 1}, function(err) {
       tt.ok(!err, 'set options should not error');
       container.removeAllListeners();
-      container.on('start-options-updated', function(_c, cb) {
+      container.on('start-options-updated', function() {
         tt.fail('listener should not be invoked.');
-        cb();
+        tt.end();
       });
       container.setStartOptions({a: 1}, function(err) {
         container.removeAllListeners();

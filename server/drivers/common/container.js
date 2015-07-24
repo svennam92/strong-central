@@ -64,11 +64,12 @@ function Container(options) {
 }
 util.inherits(Container, EventEmitter);
 
-function disconnect() {
-  this.debug('disconnect: id %s connected? %j', this._id, !!this._channel);
+function disconnect(reason) {
+  this.debug('disconnect: id %s because %s connected? %j',
+    this._id, reason, !!this._channel);
   var self = this;
   if (self._channel)
-    self._channel.close();
+    self._channel.close(reason);
   self._channel = null;
   self._hasStarted = false;
   self._server.markOldProcessesStopped(self._id, function(err) {
