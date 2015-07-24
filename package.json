@@ -42,7 +42,7 @@
     "mkdirp": "^0.5.1",
     "posix-getopt": "^1.1.0",
     "rimraf": "^2.4.0",
-    "strong-control-channel": "^2.0.0",
+    "strong-control-channel": "^2.1.0",
     "strong-fork-cicada": "^1.1.2",
     "strong-mesh-models": "^8.0.0",
     "strong-service-install": "^2.0.0-0",
