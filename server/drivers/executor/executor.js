@@ -63,14 +63,17 @@ function listen(callback) {
       self._channel ? self._channel.getToken() : '(none)',
       self._hasStarted
       );
-    if (self._channel)
-      self._channel.close();
+    if (self._channel) {
+      self.disconnect('executor-replaced');
+    }
     self._channel = channel;
-    self._hasStarted = false;
+
+    channel.on('error', function(err) {
+      self.disconnect('executor-' + err.message);
+    });
   });
 
-  // TBD - how/when will we decide that an executor is dead/unavailable?
-
+  // XXX(sam) why is this a callback if its sync?
   callback(null, this, {
     token: client.getToken()
   });
@@ -83,7 +86,7 @@ function close(callback) {
   var self = this;
 
   // XXX(sam) can new containers be created while we are closing? Maybe
-  // we should make Executor as closed immediately?
+  // we should mark Executor as closed immediately?
   async.each(Object.keys(this._containers), function(cId, callback) {
     self._containers[cId].close(callback);
   }, function(err) {
@@ -93,6 +96,28 @@ function close(callback) {
   });
 }
 Executor.prototype.close = close;
+
+function disconnect(reason) {
+  var self = this;
+
+  this.debug('disconnect because %s', reason);
+
+  Object.keys(self._containers).forEach(function(cId) {
+    self._containers[cId].disconnect(reason);
+  });
+
+  if (self._channel) {
+    self._channel.close(reason);
+    self._channel = null;
+  }
+
+  self._hasStarted = false;
+
+  // XXX(sam) Is there any way to mark an executor as connected/unconnected in
+  // the mesh models? We could list connection status and remote ip in exec-list
+  // output.
+}
+Executor.prototype.disconnect = disconnect;
 
 /**
  * Create an instance on the executor. This will send create commands if the
@@ -278,12 +303,10 @@ function _onStarting(msg, callback) {
       server, this._id, msg.hostname, msg.ip,
       msg.cpus, {remoteDriver: msg.driver}
     ),
-    function reissueContainerCmds(callback) {
-      async.each(Object.keys(self._containers),
-        function(cId, callback) {
-          self._sendContainerCreateCmd(self._containers[cId], callback);
-        }, callback
-      );
+    function reissueContainerCmds(next) {
+      async.each(Object.keys(self._containers), function(cId, callback) {
+        self._sendContainerCreateCmd(self._containers[cId], callback);
+      }, next);
     }
   ], function(err) {
     if (!err) return;

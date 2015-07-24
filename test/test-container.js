@@ -3,10 +3,11 @@ var MockServer = require('./mock-central').MockServer;
 var MockWsRouter = require('./mock-central').MockWsRouter;
 var test = require('tap').test;
 
-test('Test container', function(t) {
+test('Test container', {timeout: 2000}, function(t) {
   var server = new MockServer();
   var router = new MockWsRouter();
   var container = null;
+
 
   t.test('create container', function(tt) {
     container = new Container({
@@ -27,8 +28,9 @@ test('Test container', function(t) {
       'deployment matches');
     tt.deepEqual(container.getEnv(), {foo: 'bar'}, 'Env should match');
     tt.deepEqual(container.getStartOptions(), {}, 'No start opt should be set');
-    setImmediate(tt.end.bind(tt));
+    tt.end();
   });
+
 
   t.test('set start options', function(tt) {
     tt.plan(5);
@@ -42,9 +44,9 @@ test('Test container', function(t) {
     container.setStartOptions({a: 1}, function(err) {
       tt.ok(!err, 'set options should not error');
       container.removeAllListeners();
-      container.on('start-options-updated', function(_c, cb) {
+      container.on('start-options-updated', function() {
         tt.fail('listener should not be invoked.');
-        cb();
+        tt.end();
       });
       container.setStartOptions({a: 1}, function(err) {
         container.removeAllListeners();
@@ -56,6 +58,7 @@ test('Test container', function(t) {
     });
   });
 
+
   t.test('set env', function(tt) {
     container.on('env-updated', function(_c, cb) {
       tt.strictEqual(container, _c, 'Container should match');
@@ -64,21 +67,23 @@ test('Test container', function(t) {
       cb();
     });
     container.setEnv({foo: 'bar', bar: 'baz'}, function(err) {
-      tt.ok(!err, 'set env should not error');
+      tt.ifError(err, 'set env should not error');
       container.removeAllListeners();
-      container.on('env-updated', function(_c, cb) {
-        tt.fail('listener should not be invoked.');
-        cb();
+      container.on('env-updated', function() {
+        tt.fail('env should not be update.');
+        tt.end();
       });
       container.setEnv({foo: 'bar', bar: 'baz'}, function(err) {
         container.removeAllListeners();
-        tt.ok(!err, 'set env should not error');
+        tt.ifError(err, 'set env should not error');
         tt.deepEqual(container.getEnv(), {foo: 'bar', bar: 'baz'},
           'env should be set'
         );
+        tt.end();
       });
     });
   });
+
 
   t.test('set deployment id', function(tt) {
     tt.plan(5);
@@ -91,12 +96,11 @@ test('Test container', function(t) {
     container.deploy('deployment1', function(err) {
       tt.ok(!err, 'deployment should not error');
       container.removeAllListeners();
-      container.on('deploy', function(_c, cb) {
+      container.on('deploy', function() {
         tt.fail('listener should not be invoked.');
-        cb();
+        tt.end();
       });
       container.deploy('deployment1', function(err) {
-        container.removeAllListeners();
         tt.ok(!err, 'deployment should not error');
         tt.deepEqual(container.getDeploymentId(), 'deployment1',
           'deployment id should be set'
@@ -105,45 +109,78 @@ test('Test container', function(t) {
     });
   });
 
-  t.test('start-stop state and notifications', function(tt) {
-    tt.plan(9);
 
-    container.removeAllListeners();
-    tt.equal(container._hasStarted, false, 'Container should not be started');
-    server.onInstanceNotification = function(instanceId, msg, cb) {
-      tt.equal(instanceId, '1', 'Instance 1 is expected');
-      tt.equal(msg.cmd, 'started', 'Started command is expected');
-      cb();
-    };
+  t.test('started message handling', function(tt) {
+    container.removeAllListeners(); // cleanup from last test
 
-    router.client.channel.onRequest({
+    var started = {
       cmd: 'started',
       pid: 1234,
       pst: 12345
-    }, function() {
-      tt.equal(container._hasStarted, true, 'Container should be started');
+    };
 
-      // Exit notification emited when new channel is recieved
+    tt.plan(6);
+
+    tt.false(container._hasStarted, 'initially not started');
+
+    container.on('notification', function(id, req, cb) {
+      tt.equal(id, '1', 'started container id');
+      tt.match(req, started, 'started req');
+      cb();
+    });
+
+    router.client.channel.onRequest(started, function() {
+      tt.equal(container._hasStarted, true, 'started after notification');
+
+      // Exit notification emited when new channel is received
       server.markOldProcessesStopped = function(instanceId, cb) {
-        tt.equal(instanceId, '1', 'Instance 1 is expected');
+        tt.equal(instanceId, '1', 'stop processes after new-channel');
         cb();
       };
       router.client.emit('new-channel', router.client.channel);
-      tt.equal(container._hasStarted, false, 'Container should not be started');
+      tt.false(container._hasStarted, 'not started after new-channel');
+      tt.end();
     });
   });
 
+
   t.test('notifications', function(tt) {
+    container.removeAllListeners(); // cleanup from last test
+
     tt.plan(3);
-    server.onInstanceNotification = function(instanceId, msg, cb) {
+    container.on('notification', function(instanceId, msg, cb) {
       tt.equal(instanceId, '1');
       tt.deepEqual(msg, {some: 'msg'});
       cb({reply: 'this one'});
-    };
+    });
     router.channel.onRequest({some: 'msg'}, function(res) {
       tt.deepEqual(res, {reply: 'this one'});
     });
   });
+
+
+  t.test('disconnect', function(tt) {
+    var stopped = server.markOldProcessesStopped;
+    var err;
+    server.markOldProcessesStopped = function(id, cb) {
+      tt.equal(container._id, id, 'processes stopped');
+      return cb(err);
+    };
+
+    tt.plan(5);
+
+    container.disconnect();
+    container.disconnect();
+    router.client.emit('new-channel', router.client.channel);
+    container.disconnect();
+    err = new Error('some lb error');
+    container.disconnect();
+
+    tt.on('end', function() {
+      server.markOldProcessesStopped = stopped;
+    });
+  });
+
 
   t.end();
 });
