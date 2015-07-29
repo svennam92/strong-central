@@ -42,6 +42,7 @@ function install(argv, callback) {
       'U:(upstart)',
       's(systemd)',
       'a:(http-auth)',
+      'L:(license)',
     ].join(''),
     argv);
 
@@ -59,6 +60,7 @@ function install(argv, callback) {
     centralSeedEnv: {},
   };
 
+  var license;
   var option;
   while ((option = parser.getopt()) !== undefined) {
     switch (option.option) {
@@ -98,6 +100,9 @@ function install(argv, callback) {
       case 'a':
         jobConfig.env.STRONGLOOP_PM_HTTP_AUTH = option.optarg;
         break;
+      case 'L':
+        license = option.optarg;
+        break;
       default:
         install.error('Invalid usage (near option \'%s\'), try `%s --help`.',
           option.optopt, $0);
@@ -109,6 +114,14 @@ function install(argv, callback) {
     install.error('Invalid usage (extra arguments), try `%s --help`.', $0);
     return callback(Error('usage'));
   }
+
+  if (!license) {
+    license = require('strongloop-license')('mesh:central', 'EXIT');
+    if (!license) return;
+    license = license.key;
+  }
+
+  jobConfig.env.STRONGLOOP_LICENSE = license;
 
   if (jobConfig.centralPort < 1) {
     install.error('Invalid port specified, try `%s --help`.', $0);
