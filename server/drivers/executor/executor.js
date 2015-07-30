@@ -326,9 +326,12 @@ function instanceRequest(instanceId, req, callback) {
   var self = this;
 
   this.debug('instanceRequest -> %s, %j', instanceId, req);
-  function cbWrapper() {
+  function cbWrapper(rsp) {
     self.debug('instanceRequest <- %j', arguments);
-    callback.apply(null, arguments);
+    if (rsp && rsp.error) {
+      return callback(Error(rsp.error));
+    }
+    return callback(null, rsp);
   }
 
   switch (req.cmd) {
