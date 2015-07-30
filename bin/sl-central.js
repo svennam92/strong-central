@@ -4,11 +4,21 @@
 
 var Parser = require('posix-getopt').BasicParser;
 var Server = require('../server/server');
+var license = require('strongloop-license');
 var mkdirp = require('mkdirp').sync;
 var path = require('path');
 var fs = require('fs');
 var versionApi = require('strong-mesh-models/package.json').version;
 var versionCentral = require('../package.json').version;
+
+if (!license('mesh:central', licenseCheck))
+  return;
+
+// We only want the default message when unlicensed, be silent on success.
+function licenseCheck(err, req, res) {
+  if (err || !res)
+    require('strongloop-license').EXIT(err, req, res);
+}
 
 function printHelp($0, prn) {
   var USAGE = fs.readFileSync(require.resolve('./sl-central.txt'), 'utf-8')
