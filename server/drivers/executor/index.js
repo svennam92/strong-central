@@ -173,7 +173,11 @@ function prepareDriverArtifact(commit, callback) {
 
     var commitDirStream = fstream.Reader({
       path: commit.dir,
-      type: 'Directory'
+      type: 'Directory',
+      filter: function() {
+        return !(this.parent && this.root === this.parent &&
+               this.basename === '.git');
+      },
     });
     var tarStream = commitDirStream.pipe(tar.Pack({
       noProprietary: true,
