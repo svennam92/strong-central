@@ -300,7 +300,7 @@ function _onStarting(msg, callback) {
 
   async.series([
     server.updateExecutorData.bind(
-      server, this._id, msg.hostname, msg.ip,
+      server, this._id, msg.hostname, msg.address,
       msg.cpus, {remoteDriver: msg.driver}
     ),
     function reissueContainerCmds(next) {

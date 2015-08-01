@@ -1,3 +1,5 @@
+'use strict';
+
 var Executor = require('./executor');
 var WebsocketRouter = require('strong-control-channel/ws-router');
 var async = require('async');

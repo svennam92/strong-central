@@ -1,3 +1,5 @@
+'use strict';
+
 var cicadaCommit = require('strong-fork-cicada/lib/commit');
 var crypto = require('crypto');
 var debug = require('debug')('strong-pm:pack-receiver');

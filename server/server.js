@@ -2,10 +2,11 @@
 
 var EventEmitter = require('events').EventEmitter;
 var ExecutorDriver = require('./drivers/executor');
+var GatewayDriver = require('./gateway');
 var MeshServer = require('strong-mesh-models').meshServer;
 var MinkeLite = require('minkelite');
-var SQLite3 = require('loopback-connector-sqlite3');
 var ServiceManager = require('./service-manager');
+var SQLite3 = require('loopback-connector-sqlite3');
 var async = require('async');
 var debug = require('debug')('strong-central:server');
 var express = require('express');
@@ -140,8 +141,10 @@ function start(cb) {
     initTracing,
     appListen,
     initDriver,
+    initGatewayDriver,
     initEnv,
     reconnectExecutors,
+    reconnectGateways,
     emitListeningSignal,
   ], done);
 
@@ -194,6 +197,13 @@ function start(cb) {
     callback();
   }
 
+  function initGatewayDriver(callback) {
+    self._gwDriver = new GatewayDriver({
+      server: self,
+    });
+    callback();
+  }
+
   function reconnectExecutors(callback) {
     debug('locating existing executors');
     self._serviceManager.getExecutorInfo(function(err, execInfos) {
@@ -205,6 +215,17 @@ function start(cb) {
 
           self._driver.reconnect(exec, instInfos, callback);
         });
+      }, callback);
+    });
+  }
+
+  function reconnectGateways(callback) {
+    debug('locating existing gateways');
+    self._serviceManager.getGatewayInfos(function(err, gwInfos) {
+      if (err) return callback(err);
+
+      async.eachSeries(gwInfos, function(gw, callback) {
+        self._gwDriver.createGateway(gw.id, gw.token, callback);
       }, callback);
     });
   }
@@ -242,6 +263,10 @@ function stop(cb) {
     shutdownTasks.push(this._driver.stop.bind(this._driver));
   }
 
+  if (this._gwDriver) {
+    shutdownTasks.push(this._gwDriver.stop.bind(this._gwDriver));
+  }
+
   if (this._httpServer) {
     shutdownTasks.push(this._httpServer.close.bind(this._httpServer));
   }
@@ -260,12 +285,12 @@ function getBaseApp() {
 }
 Server.prototype.getBaseApp = getBaseApp;
 
-function updateExecutorData(id, hostname, ip, capacity, metadata, callback) {
-  debug('updateExecutorData: id %j hostname %j ip %j capacity %j meta %j',
-        id, hostname, ip, capacity, metadata);
+function updateExecutorData(id, hostname, addr, capacity, metadata, callback) {
+  debug('updateExecutorData: id %j hostname %j addr %j capacity %j meta %j',
+        id, hostname, addr, capacity, metadata);
 
   this._serviceManager.updateExecutorData(
-    id, hostname, ip, capacity, metadata, callback
+    id, hostname, addr, capacity, metadata, callback
   );
 }
 Server.prototype.updateExecutorData = updateExecutorData;
@@ -371,5 +396,42 @@ function markOldProcessesStopped(instanceId, callback) {
   this._serviceManager.markOldProcessesStopped(instanceId, callback);
 }
 Server.prototype.markOldProcessesStopped = markOldProcessesStopped;
+
+function createGateway(gatewayId, callback) {
+  this._gwDriver.createGateway(gatewayId, callback);
+}
+Server.prototype.createGateway = createGateway;
+
+function destroyGateway(gatewayId, callback) {
+  this._gwDriver.destroyGateway(gatewayId, callback);
+}
+Server.prototype.destroyGateway = destroyGateway;
+
+function onGatewayConnect(gatewayId, callback) {
+  this._serviceManager.onGatewayConnect(gatewayId, callback);
+}
+Server.prototype.onGatewayConnect = onGatewayConnect;
+
+/**
+ * Perform a full sync with a gateway. This will erase all endpoints on the
+ * gateway and create new ones.
+ * @param  {String}      gatewayId        ID of gateway to update
+ * @param  {object}      serviceEndpoints Array of services and endpoints
+ * @param  {Function}    callback         Callback function
+ */
+function updateGateway(gatewayId, serviceEndpoints, callback) {
+  this._gwDriver.updateGateway(gatewayId, serviceEndpoints, callback);
+}
+Server.prototype.updateGateway = updateGateway;
+
+/**
+ * Update all gateways with endpoint information about one service.
+ * @param  {object}      serviceEndpoints Service endpoints
+ * @param  {Function}    callback         Callback function
+ */
+function updateGateways(serviceEndpoints, callback) {
+  this._gwDriver.updateGateways(serviceEndpoints, callback);
+}
+Server.prototype.updateGateways = updateGateways;
 
 module.exports = Server;
