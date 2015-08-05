@@ -46,7 +46,8 @@ $ npm install -g strong-mesh-models
 ```
 This makes the commands `sl-meshadm` and `sl-meshctl` available.
 
-### 4. Create an executor 
+### 4. Create an executor ID
+
 ```
 $ sl-meshadm -C http://<central_host>:8701 exec-create
 ```
@@ -76,7 +77,7 @@ This makes the commands `sl-executor` and `sl-executor-install` available.
 
 Install and start as a service:
 ```
-$ sudo sl-executor-install
+$ sudo sl-executor-install  -C http://<token>@<central_host>:8701
 $ sudo /sbin/initctl start strong-executor
 ```
 OR run as a transient process:
@@ -88,10 +89,13 @@ Where:
 - `<token>` is the executor token generated in step 4.
 - `<central_host>` is the host where you installed StrongLoop Central.
 
-You’ll see a response in the console like:
+If you ran `sl-executor`, you’ll see a response in the console like:
 ```
 sl-executor: connected to http://<token>@<central_host>:8701
 ```
+
+If you installed and started the service, you'll just see a message that the
+service is running.
 
 ### 7. Deploy an app from your machine to StrongLoop Central 
 
