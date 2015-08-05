@@ -19,6 +19,11 @@ Options:
                       the specified credentials for every request sent to the
                       REST API where CREDS is given in the form of
                       `<user>:<pass>`.
+  -L,--license LIC    Install with license LIC (default is the user's license).
+
+Note that Central requires a license in order to run. If you have questions
+about how to find your license or StrongLoop licensing please contact
+sales@strongloop.com.
 
 OS Service support:
 
