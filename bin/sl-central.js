@@ -59,7 +59,7 @@ function main(argv, callback) {
     }
   }
 
-  if (!license('mesh/central', licenseCheck))
+  if (!license('mesh:central', licenseCheck))
     return;
 
   // We only want the default message when unlicensed, be silent on success.
