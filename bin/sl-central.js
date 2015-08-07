@@ -11,15 +11,6 @@ var fs = require('fs');
 var versionApi = require('strong-mesh-models/package.json').version;
 var versionCentral = require('../package.json').version;
 
-if (!license('mesh/central', licenseCheck))
-  return;
-
-// We only want the default message when unlicensed, be silent on success.
-function licenseCheck(err, req, res) {
-  if (err || !res)
-    require('strongloop-license').EXIT(err, req, res);
-}
-
 function printHelp($0, prn) {
   var USAGE = fs.readFileSync(require.resolve('./sl-central.txt'), 'utf-8')
     .replace(/%MAIN%/g, $0)
@@ -67,6 +58,16 @@ function main(argv, callback) {
         return callback(Error('Invalid usage'));
     }
   }
+
+  if (!license('mesh:central', licenseCheck))
+    return;
+
+  // We only want the default message when unlicensed, be silent on success.
+  function licenseCheck(err, req, res) {
+    if (err || !res)
+      require('strongloop-license').EXIT(err, req, res);
+  }
+
 
   base = path.resolve(base);
 
