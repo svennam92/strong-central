@@ -198,77 +198,81 @@ function _rescheduleAll(callback) {
 ServiceManager.prototype._rescheduleAll = _rescheduleAll;
 
 function _schedule(service, callback) {
-  debug('onServiceUpdate(%j)', service);
-  if (!service.deploymentInfo || !service.deploymentInfo.id) return callback();
-
-  var self = this;
-
-  debug('onServiceUpdate: svc %j env: %j', service.id, service.env);
-
-  async.series([scheduleInstances, updateInstances], callback);
-
-  // Instances are created before deploy/start so that additional paramaters
-  // like cpus (# procs) or tracingEnabled etc can be specified before the
-  // service deployment is started.
-
-  // Dumb scheduling algo, creates 1 instance per executor. does not respect
-  // scale or groups.
-  function scheduleInstances(callback) {
-    var models = self._meshApp.models;
-    var Instance = models.ServiceInstance;
-    var Executor = models.Executor;
-
-    Executor.find({}, function(err, executors) {
-      if (err) return callback(err);
-      async.each(executors, ensureInstanceExists, callback);
-    });
-
-    function ensureInstanceExists(executor, callback) {
-      Instance.findOne(
-        {where: {executorId: executor.id, serverServiceId: service.id}},
-        function(err, inst) {
-          if (err) return callback(err);
-          if (inst) return callback(null, inst);
-
-          inst = new Instance({
-            executorId: executor.id,
-            serverServiceId: service.id,
-            groupId: 1,
-            cpus: 'STRONGLOOP_CLUSTER' in process.env ?
-              process.env.STRONGLOOP_CLUSTER : 'CPU',
-
-            // allow starting tracing on all instances via env
-            // for testing purposes
-            tracingEnabled: !!process.env.STRONGLOOP_TRACING || false,
-            currentDeploymentId: service.deploymentInfo.id,
-          });
-          inst.save(callback);
-        }
-      );
-    }
-  }
-
-  function updateInstances(callback) {
-    var env = service.env;
-
-    service.instances(true, function(err, instances) {
-      if (err) return callback(err);
-
-      async.each(instances, updateInstance, callback);
-
-      function updateInstance(instance, callback) {
-        instance.updateAttributes({
-          currentDeploymentId: service.deploymentInfo.id,
-        }, function(err) {
-          if (err) return callback(err);
-
-          self._server.updateInstanceEnv(
-            instance.executorId, instance.id, env, callback
-          );
-        });
-      }
-    });
-  }
+  //TODO: (KR) Enable scheduling if using executor driver
+  return setImmediate(callback);
+  //
+  // debug('onServiceUpdate(%j)', service);
+  // if (!service.deploymentInfo || !service.deploymentInfo.id)
+  //   return callback();
+  //
+  // var self = this;
+  //
+  // debug('onServiceUpdate: svc %j env: %j', service.id, service.env);
+  //
+  // async.series([scheduleInstances, updateInstances], callback);
+  //
+  // // Instances are created before deploy/start so that additional paramaters
+  // // like cpus (# procs) or tracingEnabled etc can be specified before the
+  // // service deployment is started.
+  //
+  // // Dumb scheduling algo, creates 1 instance per executor. does not respect
+  // // scale or groups.
+  // function scheduleInstances(callback) {
+  //   var models = self._meshApp.models;
+  //   var Instance = models.ServiceInstance;
+  //   var Executor = models.Executor;
+  //
+  //   Executor.find({}, function(err, executors) {
+  //     if (err) return callback(err);
+  //     async.each(executors, ensureInstanceExists, callback);
+  //   });
+  //
+  //   function ensureInstanceExists(executor, callback) {
+  //     Instance.findOne(
+  //       {where: {executorId: executor.id, serverServiceId: service.id}},
+  //       function(err, inst) {
+  //         if (err) return callback(err);
+  //         if (inst) return callback(null, inst);
+  //
+  //         inst = new Instance({
+  //           executorId: executor.id,
+  //           serverServiceId: service.id,
+  //           groupId: 1,
+  //           cpus: 'STRONGLOOP_CLUSTER' in process.env ?
+  //             process.env.STRONGLOOP_CLUSTER : 'CPU',
+  //
+  //           // allow starting tracing on all instances via env
+  //           // for testing purposes
+  //           tracingEnabled: !!process.env.STRONGLOOP_TRACING || false,
+  //           currentDeploymentId: service.deploymentInfo.id,
+  //         });
+  //         inst.save(callback);
+  //       }
+  //     );
+  //   }
+  // }
+  //
+  // function updateInstances(callback) {
+  //   var env = service.env;
+  //
+  //   service.instances(true, function(err, instances) {
+  //     if (err) return callback(err);
+  //
+  //     async.each(instances, updateInstance, callback);
+  //
+  //     function updateInstance(instance, callback) {
+  //       instance.updateAttributes({
+  //         currentDeploymentId: service.deploymentInfo.id,
+  //       }, function(err) {
+  //         if (err) return callback(err);
+  //
+  //         self._server.updateInstanceEnv(
+  //           instance.executorId, instance.id, env, callback
+  //         );
+  //       });
+  //     }
+  //   });
+  // }
 }
 ServiceManager.prototype._schedule = _schedule;
 

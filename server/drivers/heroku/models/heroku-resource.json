@@ -1,0 +1,73 @@
+{
+  "name": "HerokuResource",
+  "plural": "HerokuResource",
+  "base": "PersistedModel",
+  "description": "Heroku Addon API",
+  "http": {
+    "path": "/heroku/resources"
+  },
+  "properties": {
+    "id": {
+      "type": "string",
+      "id": true,
+      "required": false,
+      "defaultFn": "uuid"
+    },
+    "heroku_id": {
+      "type": "string",
+      "required": true
+    },
+    "plan": {
+      "type": "string",
+      "required": true
+    },
+    "region": {
+      "type": "string",
+      "required": true
+    },
+    "callback_url": {
+      "type": "string",
+      "required": true
+    },
+    "log_input_url": {
+      "type": "string"
+    },
+    "logplex_token": {
+      "type": "string"
+    },
+    "options": {
+      "type": "object",
+      "required": true
+    },
+    "uuid": {
+      "type": "string",
+      "required": true
+    },
+    "domains": {
+      "type": ["string"]
+    },
+    "app_name": {
+      "type": "string"
+    },
+    "owner_email": {
+      "type": "string"
+    },
+    "license": {
+      "type": "string"
+    }
+  },
+  "relations": {
+    "executor": {
+      "type": "hasOne",
+      "model": "Executor"
+    },
+    "serverService": {
+      "type": "hasOne",
+      "model": "ServerService"
+    },
+    "apiUser": {
+      "type": "hasOne",
+      "model": "APIUser"
+    }
+  }
+}
