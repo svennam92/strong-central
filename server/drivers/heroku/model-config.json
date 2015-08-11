@@ -1,0 +1,11 @@
+{
+  "_meta": {
+    "sources": [
+      "./models"
+    ]
+  },
+  "HerokuResource": {
+    "dataSource": "db",
+    "public": true
+  }
+}

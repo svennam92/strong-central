@@ -1,0 +1,26 @@
+{
+  "id": "strongloop",
+  "api": {
+    "config_vars": [
+      "STRONGLOOP_ADDON_INFO",
+      "STRONGLOOP_LICENSE"
+    ],
+    "regions": [
+      "us",
+      "eu"
+    ],
+    "password": "c05104f9716a0d0c287b2dc0e3ae5ca7",
+    "sso_salt": "79b91666f17fed6ad3403668c20c0ccf",
+    "production": {
+      "base_url": "https://heroku.do.strongloop.com:8701/api/heroku/resources",
+      "sso_url": "https://heroku.do.strongloop.com:8701/api/auth/heroku",
+      "registration_url": "https://heroku.do.strongloop.com:8701/executor-control",
+      "supervisor_url": "https://heroku.do.strongloop.com:8701/supervisor-control"
+    },
+    "test": {
+      "base_url": "http://localhost:8000/ops/heroku/resources",
+      "sso_url": "http://localhost:8000/auth/heroku"
+    }
+  },
+  "$base": 143987306554954
+}

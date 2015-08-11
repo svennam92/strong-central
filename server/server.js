@@ -1,7 +1,7 @@
 'use strict';
 
 var EventEmitter = require('events').EventEmitter;
-var ExecutorDriver = require('./drivers/executor');
+var HerokuDriver = require('./drivers/heroku');
 var GatewayDriver = require('./gateway');
 var MeshServer = require('strong-mesh-models').meshServer;
 var MinkeLite = require('minkelite');
@@ -57,7 +57,7 @@ function Server(options) {
   this._listenPort = 'listenPort' in options ? options.listenPort : 8701;
   var envPath = path.resolve(this._baseDir, 'env.json');
 
-  var dbDriver = options['mesh.db.driver'] || 'sqlite3';
+  var dbDriver = options['mesh.db.driver'] || 'memory';
   this._dataSourceConfig = null;
   switch (dbDriver) {
     case 'sqlite3':
@@ -137,11 +137,11 @@ function start(cb) {
   this._httpServer = http.createServer(this._baseApp);
 
   async.series([
-    initDatasource,
     initTracing,
     appListen,
     initDriver,
     initGatewayDriver,
+    initDatasource,
     initEnv,
     reconnectExecutors,
     reconnectGateways,
@@ -188,7 +188,8 @@ function start(cb) {
       self._baseDir, 'artifacts'
     );
 
-    self._driver = new ExecutorDriver({
+    // TODO: (KR) Make driver sectable via command line
+    self._driver = new HerokuDriver({
       artifactDir: artifactDir,
       baseDir: self._baseDir,
       console: console,
@@ -232,7 +233,13 @@ function start(cb) {
 
   function emitListeningSignal(serialCb) {
     debug('emitting listening event');
-    self.emit('listening', self._httpServer.address());
+    var addr = self._httpServer.address();
+    self.emit('listening', addr);
+
+    // load model explorer
+    var serverUrl = fmt('https://%s:%s/', addr.address, addr.port);
+    self._meshApp.set('url', serverUrl);
+    self._meshApp.emit('started');
     process.nextTick(serialCb);
   }
 
@@ -284,6 +291,11 @@ function getBaseApp() {
   return this._baseApp;
 }
 Server.prototype.getBaseApp = getBaseApp;
+
+function getMeshApp() {
+  return this._meshApp;
+}
+Server.prototype.getMeshApp = getMeshApp;
 
 function updateExecutorData(id, hostname, addr, capacity, metadata, callback) {
   debug('updateExecutorData: id %j hostname %j addr %j capacity %j meta %j',
