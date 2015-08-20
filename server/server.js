@@ -156,7 +156,7 @@ function start(cb) {
   function initTracing(callback) {
     /* eslint-disable camelcase */
     // Instantiate minkelite so trace data can be stored
-    self._minkelite = new MinkeLite(self._traceOptions);
+    self._meshApp.minkelite = self._minkelite = new MinkeLite(self._traceOptions);
     /* eslint-enable camelcase */
     self._minkelite.on('error', function(err) {
       if (callback) callback(err);
