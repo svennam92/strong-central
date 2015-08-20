@@ -259,6 +259,7 @@ function _schedule(service, callback) {
       function updateInstance(instance, callback) {
         instance.updateAttributes({
           currentDeploymentId: service.deploymentInfo.id,
+          env: _.assign(instance.env, {STRONGLOOP_TRACES_ID: instance.id}),
         }, function(err) {
           if (err) return callback(err);
 
