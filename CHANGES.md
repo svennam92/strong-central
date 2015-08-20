@@ -1,3 +1,23 @@
+2015-08-20, Version 2.0.0
+=========================
+
+ * entitlement: correct feature separator string (Sam Roberts)
+
+ * sl-central: --help and --version without a license (Sam Roberts)
+
+ * Update README.md (Rand McKinney)
+
+ * central: require license to run (Sam Roberts)
+
+ * Support for adding and updating gateways (Krishna Raman)
+
+ * Revert "central: require license to run" (Sam Roberts)
+
+ * executor: fix handling of generic requests (Ryan Graham)
+
+ * git: filter out .git from artifact tgz (Ryan Graham)
+
+
 2015-07-27, Version 1.0.1
 =========================
 
