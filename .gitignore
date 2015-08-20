@@ -4,3 +4,5 @@ minkelite.db
 node_modules
 npm-debug.log
 .nyc_output
+client/build/
+.bower-cache

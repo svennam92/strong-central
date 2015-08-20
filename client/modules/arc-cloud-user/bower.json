@@ -1,0 +1,19 @@
+{
+  "name": "angular-arc-cloud-user",
+  "version": "1.0.0",
+  "homepage": "https://github.com/strongloop/strong-central",
+  "authors": [
+    "Krishna Raman <kraman@gmail.com>"
+  ],
+  "description": "Arc user module for Mesh",
+  "main": "arc-user.module.js",
+  "license": "StrongLoop",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    ".bower-cache",
+    "test",
+    "tests"
+  ]
+}

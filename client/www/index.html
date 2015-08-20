@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>StrongLoop Arc</title>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+  <!-- bower:css -->
+  <!-- endbower -->
+
+  <link rel="stylesheet" type="text/css" href="./style/ng-grid.min.css">
+  <link rel="stylesheet" type="text/css" href="./style/jquery-ui.css">
+  <link rel="stylesheet" type="text/css" href="./style/jquery.contextMenu.css">
+  <link rel="stylesheet" type="text/css" href="./style/bootstrap.css">
+  <link rel="stylesheet" type="text/css" href="./style/style.css">
+
+</head>
+<body ng-app="Arc" ng-controller="ArcMainController" ng-click="pageClick($event)" class="ui-theme">
+
+  <div class="headerContainer" data-id="AppHeaderContainer">
+    <div class="branding">
+      <a ui-sref="home"><img src="./images/strongloop.svg" alt="Strongloop logo" class="logo"></a>
+    </div>
+    <sl-app-selector></sl-app-selector>
+    <div class="navButtons">
+      <ul>
+        <li class="header-help-container" ng-show="helpId">
+          <sl-popover-help name="{{helpId}}" position="left" iconclass="icon icon-documentation"></sl-popover-help>
+        </li>
+      </ul>
+    </div>
+    <div class="header-version"></div>
+
+  </div>
+
+  <sl-message-global></sl-message-global>
+  <div ui-view autoscroll="false" class="app-module-container"></div>
+
+  <!-- growl notification placeholder -->
+  <div growl></div>
+
+  <!-- version injector (display the version ASAP) -->
+  <script src="./scripts/version.js"></script>
+
+  <!-- bower:js -->
+  <!-- endbower -->
+
+  <!-- inject:js -->
+  <!-- endinject -->
+
+</body>
+</html>
