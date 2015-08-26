@@ -7,15 +7,21 @@ Options:
   -v,--version      Print version and exit.
   -b,--base BASE    Base directory to work in (default `.strong-central`).
   -l,--listen PORT  Listen on PORT for git pushes (default 8701).
+  -d,--driver DRV   The driver to use to run services. (default `executor`).
+  -o,--options FILE Driver options file.
 
 The base directory is used to save deployed applications, for working
 directories, and for any other files that need to be created.
 
 Strongloop Central will be controllable via HTTP on the port specified. That
-port is also used for deployment with strong-deploy. Basic authentication
-can be enabled for HTTP by setting the STRONGLOOP_PM_HTTP_AUTH environment
-variable to <user>:<pass> (eg. strong-central:super-secret).
+port is also used for deployment with strong-deploy.
 
-It is also controllable using local domain sockets, which look like file paths,
-and the listen path can be changed or disabled. These sockets do not support
-HTTP authentication.
+Drivers:
+
+* Executor driver:
+
+Supports running services on managed VMs using the strong-executor package.
+
+When using the executor driver, basic authentication can be enabled for HTTP by
+setting the STRONGLOOP_PM_HTTP_AUTH environment variable to <user>:<pass>
+(eg. strong-central:super-secret).

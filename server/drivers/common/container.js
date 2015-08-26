@@ -51,8 +51,14 @@ function Container(options) {
       self._channel ? self._channel.getToken() : '(none)',
       self._hasStarted
       );
-    self.disconnect();
+    if (self._channel) {
+      self.disconnect('replaced');
+    }
     self._channel = channel;
+
+    channel.on('error', function(err) {
+      self.disconnect('exit', err.message);
+    });
   });
 
   this.debug('Container %j', {
@@ -66,7 +72,7 @@ function Container(options) {
 }
 util.inherits(Container, EventEmitter);
 
-function disconnect(reason) {
+function disconnect(type, reason) {
   this.debug('disconnect: id %s because %s connected? %j',
     this._id, reason, !!this._channel);
   var self = this;
@@ -78,6 +84,7 @@ function disconnect(reason) {
     if (err)
       self.debug('Error marking old processes as stopped: %s', err.message);
   });
+  self.emit('disconnect-' + type, this._id);
 }
 Container.prototype.disconnect = disconnect;
 
