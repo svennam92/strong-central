@@ -5,8 +5,10 @@ var ExecutorDriver = require('./drivers/executor');
 var GatewayDriver = require('./gateway');
 var MeshServer = require('strong-mesh-models').meshServer;
 var MinkeLite = require('minkelite');
+var MinkePubSub = require('minkepubsub');
 var ServiceManager = require('./service-manager');
 var SQLite3 = require('loopback-connector-sqlite3');
+var PostgreSQL = require('loopback-connector-postgresql');
 var async = require('async');
 var debug = require('debug')('strong-central:server');
 var express = require('express');
@@ -57,9 +59,16 @@ function Server(options) {
   this._listenPort = 'listenPort' in options ? options.listenPort : 8701;
   var envPath = path.resolve(this._baseDir, 'env.json');
 
-  var dbDriver = options['mesh.db.driver'] || 'sqlite3';
+  var dbDriver = options['mesh.db.driver'] || 'postgresql';
   this._dataSourceConfig = null;
   switch (dbDriver) {
+    case 'postgresql':
+      this._dataSourceConfig = {
+        connector: PostgreSQL,
+        file: options['mesh.db.filePath'] ||
+          path.join(this._baseDir, 'strong-mesh.db'),
+      };
+      break;
     case 'sqlite3':
       this._dataSourceConfig = {
         connector: SQLite3,
@@ -108,6 +117,7 @@ function Server(options) {
   // The express app on which the rest of the middleware is mounted.
   this._baseApp = express();
   this._serviceManager = new ServiceManager(this);
+  this._minkePubSub = null; // assigned in done
   this._meshApp = MeshServer(
     this._serviceManager, this._minkelite, meshOptions);
   this._baseApp.use('/artifacts/*', this._retrieveDriverArtifact.bind(this));
@@ -146,7 +156,7 @@ function start(cb) {
     reconnectExecutors,
     reconnectGateways,
     emitListeningSignal,
-  ], done);
+  ], done.bind(self));
 
   function initDatasource(callback) {
     debug('updating database');
@@ -236,16 +246,32 @@ function start(cb) {
     process.nextTick(serialCb);
   }
 
-  function done(err) {
-    debug('startup complete');
-    if (!err) return;
-
+  function errorExit(err) {
     console.error('Startup failed with: %s', err.message);
     self.stop();
     // XXX(sam) It's weird to callback AND emit an error, also, maybe
     // cb should happen after stop?
     self.emit('error', err);
     cb(err);
+  }
+
+  // TODO: passClient may be called many times.  It has to return
+  // a current connected handle to the DB.
+  function passClient() {
+    return self._meshApp.dataSources.db.connector.client;
+  }
+
+  function done(err) {
+    debug('startup complete');
+    if (!err) {
+      MinkePubSub.minkePublish(passClient, null,
+        function(err) {
+          if (err) errorExit(err);
+        });
+      this._minkePubSub = new MinkePubSub(passClient);
+    } else {
+      errorExit(err);
+    }
   }
 }
 Server.prototype.start = start;

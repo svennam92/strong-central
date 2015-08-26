@@ -37,6 +37,7 @@
     "lodash": "^3.9.3",
     "loopback": "^2.18.0",
     "loopback-boot": "^2.8.0",
+    "loopback-connector-postgresql": "^2.3.1",
     "loopback-connector-sqlite3": "^1.0.0",
     "minkelite": "^1.1.0",
     "mkdirp": "^0.5.1",

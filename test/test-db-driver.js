@@ -40,5 +40,24 @@ test('Test DB Drivers', function(t) {
     });
   });
 
+  t.test('postgresql db', function(tt) {
+    mktmpdir(function(err, dir, cleanup) {
+      tt.ok(!err, 'Temp working directory should be created');
+      tt.on('end', cleanup);
+
+      var dbFile = path.join(dir, 'bar.db');
+      var centralApp = new Server({
+        baseDir: dir,
+        'mesh.db.driver': 'postgresql',
+        'mesh.db.filePath': dbFile,
+      });
+      var ds = centralApp._meshApp.dataSources.db;
+      tt.equal(ds.connector.name, 'postgresql');
+      tt.equal(ds.connector.settings.file, dbFile);
+      centralApp.stop(tt.end.bind(tt));
+    });
+  });
+
   t.end();
+
 });
