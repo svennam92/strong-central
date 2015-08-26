@@ -199,6 +199,11 @@ ServiceManager.prototype._rescheduleAll = _rescheduleAll;
 
 function _schedule(service, callback) {
   debug('onServiceUpdate(%j)', service);
+  if (!this._server.shouldScheduleSvcs()) {
+    debug('Driver does not require scheduling. Skipping');
+    return setImmediate(callback);
+  }
+
   if (!service.deploymentInfo || !service.deploymentInfo.id) return callback();
 
   var self = this;

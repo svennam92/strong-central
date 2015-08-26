@@ -36,6 +36,8 @@ function install(argv, callback) {
       'u:(user)',
       'g:(group)',
       'p:(port)',
+      'd:(driver)',
+      'o:(options)',
       'j:(job-file)',
       'n(dry-run)',
       'f(force)',
@@ -50,6 +52,8 @@ function install(argv, callback) {
     user: 'strong-central',
     centralBaseDir: null, // defaults to options.cwd in fillInHome
     centralPort: 8701,
+    driver: 'executor',
+    driverOptionsFile: null,
     dryRun: false,
     jobFile: null, // strong-service-install provides an init-specific default
     force: false,
@@ -75,6 +79,12 @@ function install(argv, callback) {
         break;
       case 'p':
         jobConfig.centralPort = option.optarg | 0; // cast to an integer
+        break;
+      case 'd':
+        jobConfig.driver = option.optarg;
+        break;
+      case 'o':
+        jobConfig.driverOptionsFile = option.optarg;
         break;
       case 'u':
         jobConfig.user = option.optarg;
@@ -148,7 +158,12 @@ function install(argv, callback) {
     '--listen', jobConfig.centralPort,
     // relative to CWD, which defaults to $HOME of user that central runs as
     '--base', jobConfig.centralBaseDir || '.',
+    '--driver', jobConfig.driver
   ];
+
+  if (jobConfig.driverOptionsFile) {
+    jobConfig.push('--options', jobConfig.driverOptionsFile);
+  }
 
   return install.slSvcInstall(jobConfig, report);
 

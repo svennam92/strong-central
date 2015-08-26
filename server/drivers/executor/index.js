@@ -32,6 +32,9 @@ function ExecutorDriver(options) {
 
   this._executors = {};
 }
+ExecutorDriver.NAME = 'executor';
+ExecutorDriver.SUPPORTS_BASIC_AUTH = true;
+ExecutorDriver.REQUIRES_SCHEDULER = true;
 
 /**
  * Recreate channels for existing executors/instances. Updates executor and
