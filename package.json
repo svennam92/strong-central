@@ -31,6 +31,7 @@
   },
   "dependencies": {
     "async": "^1.0.0",
+    "basic-auth": "^1.0.3",
     "debug": "^2.2.0",
     "express": "^4.12.4",
     "fstream": "^1.0.6",
@@ -40,7 +41,9 @@
     "loopback-connector-sqlite3": "^1.0.0",
     "minkelite": "^1.1.0",
     "mkdirp": "^0.5.1",
+    "nock": "^2.10.0",
     "posix-getopt": "^1.1.0",
+    "request": "^2.61.0",
     "rimraf": "^2.4.0",
     "strong-control-channel": "^2.1.0",
     "strong-fork-cicada": "^1.1.2",
@@ -50,6 +53,7 @@
     "strong-tunnel": "^1.1.0",
     "strong-url-defaults": "^1.0.0",
     "strongloop-license": "^1.4.0",
+    "supertest": "^1.1.0",
     "tar": "^2.1.1"
   }
 }

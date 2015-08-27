@@ -1,0 +1,28 @@
+{
+  "name": "SLUser",
+  "base": "User",
+  "idInjection": true,
+  "http": {
+    "path": "/Users"
+  },
+  "properties": {
+    "username": {
+      "type": "string"
+    }
+  },
+  "validations": [],
+  "relations": {
+    "services": {
+      "type": "hasMany",
+      "model": "ServerService",
+      "foreignKey": "SLUserId"
+    },
+    "executors": {
+      "type": "hasMany",
+      "model": "Executor",
+      "foreignKey": "SLUserId"
+    }
+  },
+  "acls": [],
+  "methods": []
+}

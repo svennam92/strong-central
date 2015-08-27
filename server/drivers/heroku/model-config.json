@@ -1,0 +1,19 @@
+{
+  "_meta": {
+    "sources": [
+      "./models"
+    ]
+  },
+  "HerokuResource": {
+    "dataSource": "db",
+    "public": true
+  },
+  "SLUser": {
+    "dataSource": "db",
+    "public": true
+  },
+  "AccessToken": {
+    "dataSource": "db",
+    "public": true
+  }
+}

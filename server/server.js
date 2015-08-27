@@ -259,7 +259,13 @@ function start(cb) {
 
   function done(err) {
     debug('startup complete');
-    if (!err) return;
+    if (!err) {
+      self._meshApp.set('url',
+        fmt('http://:%s', self._httpServer.address().port)
+      );
+      self._meshApp.emit('started');
+      return;
+    }
 
     console.error('Startup failed with: %s', err.message);
     self.stop();
@@ -306,6 +312,11 @@ function getBaseApp() {
 }
 Server.prototype.getBaseApp = getBaseApp;
 
+function getMeshApp() {
+  return this._meshApp;
+}
+
+Server.prototype.getMeshApp = getMeshApp;
 function updateExecutorData(id, hostname, addr, capacity, metadata, callback) {
   debug('updateExecutorData: id %j hostname %j addr %j capacity %j meta %j',
         id, hostname, addr, capacity, metadata);
