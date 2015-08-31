@@ -10,7 +10,7 @@ Options:
   -u,--user USER      User to run central as (default is strong-central).
   -p,--port PORT      Listen on PORT (default 8701).
   -d,--driver DRV     The driver to use to run services. (default `executor`).
-  -o,--options FILE   Driver options file
+  -o,--options FILE   Driver options file.
   -n,--dry-run        Don't write any files.
   -j,--job-file FILE  Path of Upstart job to create (default is
                       `/etc/init/strong-central.conf`).

@@ -95,9 +95,8 @@ function main(argv, callback) {
   var driverConfig = {};
   if (driverConfigFile) {
     try {
-      fs.statSync(driverConfigFile);
       driverConfig = JSON.parse(fs.readFileSync(driverConfigFile, 'utf8'));
-    } catch (e) {
+    } catch (_) {
       console.error(
         'Unable to read the driver options: %s, try `%s --help`.',
         driverConfigFile, $0
@@ -119,7 +118,8 @@ function main(argv, callback) {
   });
 
   app.on('listening', function(listenAddr) {
-    console.log('%s: StrongLoop Central v%s (API v%s) (Driver: %s)\n' +
+    console.log('%s: StrongLoop Central v%s (API v%s)\n' +
+                'Running with %s driver\n' +
                 'Listening on port `%s`, work base is `%s`',
                 $0, versionCentral, versionApi, app.driverName(),
                 listenAddr.port, base);
