@@ -18,6 +18,7 @@ function createCentralAndTest(title, testFn) {
         centralUri.port = centralApp.port();
 
         testFn(t, centralApp, centralUri);
+        t.end();
       });
       centralApp.start();
     });
