@@ -194,7 +194,7 @@ function runTest(t, baseDir, artifactDir) {
       var artifactFileStream = fs.createWriteStream(dumpFile);
       driver.getDriverArtifact(
         'i1', 'commithash', mockRequest, artifactFileStream);
-      artifactFileStream.on('end', function() {
+      artifactFileStream.on('finish', function() {
         var f1 = fs.statSync(expectedArtifact);
         var f2 = fs.statSync(dumpFile);
         tt.equal(f1.size, f2.size);
