@@ -39,4 +39,6 @@ test('Test DB Drivers', function(t) {
       centralApp.stop(tt.end.bind(tt));
     });
   });
+
+  t.end();
 });
