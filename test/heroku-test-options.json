@@ -1,4 +1,6 @@
 {
-  "api_user": "strongloop",
-  "api_password": "c05104f9716a0d0c287b2dc0e3ae5ca7"
+  "apiUser": "strongloop",
+  "apiPassword": "c05104f9716a0d0c287b2dc0e3ae5ca7",
+  "registrationUri": "https://heroku.do.strongloop.com:8701/executor-control",
+  "supervisorUrl": "https://heroku.do.strongloop.com:8701/supervisor-control"
 }

@@ -7,7 +7,7 @@ var os = require('os');
 
 testHelper(function(t, baseDir, meshApp, driver) {
   var authHeader = 'Basic ' + new Buffer(
-    testOptions.api_user + ':' + testOptions.api_password
+    testOptions.apiUser + ':' + testOptions.apiPassword
   ).toString('base64');
 
   var herokuApi = nock('https://api.heroku.com', {

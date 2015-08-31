@@ -28,6 +28,7 @@ var OPTIONS = {
   MeshServer: MeshServer,
   ServiceManager: ServiceManager,
   ExecutorDriver: require('./drivers/executor'),
+  driverOptions: {},
 
   // Optional:
   //   baseDir:       Defaults to '.strong-central'
@@ -85,6 +86,7 @@ function Server(options) {
   }
 
   this._ExecutorDriver = options.ExecutorDriver;
+  this._executorDriverConfig = options.driverConfig;
 
   var meshOptions = {
     db: this._dataSourceConfig,
@@ -214,6 +216,7 @@ function start(cb) {
       baseDir: self._baseDir,
       console: console,
       server: self,
+      config: self._executorDriverConfig,
     });
     callback();
   }

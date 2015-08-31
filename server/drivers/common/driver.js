@@ -10,6 +10,7 @@ function BaseDriver(options) {
   this._artifactDir = options.artifactDir;
   this._WebsocketRouter = options.WebsocketRouter || WebsocketRouter;
   this._Container = options.Container;
+  this._config = options.config;
 
   debug('Initializing exec control endpoint');
   this._execRouter = new this._WebsocketRouter(

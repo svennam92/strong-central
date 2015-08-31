@@ -39,7 +39,7 @@ function main(argv, callback) {
   var base = '.strong-central';
   var listen = 8701;
   var driver = 'executor';
-  var driverOptionsFile = null;
+  var driverConfigFile = null;
 
   var option;
   while ((option = parser.getopt()) !== undefined) {
@@ -60,7 +60,7 @@ function main(argv, callback) {
         driver = option.optarg.toLowerCase();
         break;
       case 'o':
-        driverOptionsFile = option.optarg;
+        driverConfigFile = option.optarg;
         break;
       default:
         console.error('Invalid usage (near option \'%s\'), try `%s --help`.',
@@ -92,15 +92,15 @@ function main(argv, callback) {
     return callback(Error('Missing listen port'));
   }
 
-  var driverOptions = {};
-  if (driverOptionsFile) {
+  var driverConfig = {};
+  if (driverConfigFile) {
     try {
-      fs.statSync(driverOptionsFile);
-      driverOptions = JSON.parse(fs.readFileSync(driverOptionsFile, 'utf8'));
+      fs.statSync(driverConfigFile);
+      driverConfig = JSON.parse(fs.readFileSync(driverConfigFile, 'utf8'));
     } catch (e) {
       console.error(
         'Unable to read the driver options: %s, try `%s --help`.',
-        driverOptionsFile, $0
+        driverConfigFile, $0
       );
       return callback(Error('Invalid driver options'));
     }
@@ -115,7 +115,7 @@ function main(argv, callback) {
     baseDir: base,
     listenPort: listen,
     ExecutorDriver: require(fmt('../server/drivers/%s', driver)),
-    driverOptions: driverOptions,
+    driverConfig: driverConfig,
   });
 
   app.on('listening', function(listenAddr) {

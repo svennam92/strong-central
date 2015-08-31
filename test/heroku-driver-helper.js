@@ -56,7 +56,7 @@ exports.testHelper = function(runTest) {
         server: server,
         WebsocketRouter: MockWsRouter,
         Container: MockContainer,
-        options: testOptions,
+        config: testOptions,
       });
 
       mkdirp(baseDir, function(err) {
