@@ -154,13 +154,14 @@ testHelper(function(t, baseDir, meshApp, driver) {
     Instance.findById(instanceModelId, function(err, inst) {
       tt.ifError(err);
       tt.ok(inst, 'Instance should be created');
+      tt.equal(inst.stopTime, 0, 'Stop time should not be set');
       tt.end();
     });
   });
 
-  var herokuContaner = null;
+  var herokuContainer = null;
   t.test('test heroku driver: create instance', function(tt) {
-    herokuContaner = driver.createInstance({
+    herokuContainer = driver.createInstance({
       executorId: executorModel.id,
       instanceId: instanceModelId,
       env: {},
@@ -192,7 +193,7 @@ testHelper(function(t, baseDir, meshApp, driver) {
     tt.plan(3);
     var cmd = {cmd: 'set-size', size: 1};
 
-    herokuContaner.request = function(req, callback) {
+    herokuContainer.request = function(req, callback) {
       tt.deepEqual(req, cmd);
       callback({ok: 1});
     };
@@ -205,12 +206,17 @@ testHelper(function(t, baseDir, meshApp, driver) {
     );
   });
 
-  t.test('Heroku dyno disconnect', function(tt) {
-    tt.end();
-  });
-
   t.test('Heroku dyno exit', function(tt) {
-    tt.end();
+    herokuContainer.emit('disconnect-exit', instanceModelId);
+    setImmediate(function() {
+      var Instance = meshApp.models.ServiceInstance;
+      Instance.findById(instanceModelId, function(err, inst) {
+        tt.ifError(err);
+        tt.ok(inst, 'Instance should exist');
+        tt.ok(inst.stopTime, 'Stop time should be set');
+        tt.end();
+      });
+    });
   });
 
   t.test('Deprovision service', function(tt) {

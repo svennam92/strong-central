@@ -8,6 +8,10 @@
     "dataSource": "db",
     "public": true
   },
+  "HerokuAuditLog": {
+    "dataSource": "db",
+    "public": false
+  },
   "SLUser": {
     "dataSource": "db",
     "public": true

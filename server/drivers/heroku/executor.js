@@ -4,6 +4,7 @@ var BaseExecutor = require('../common/executor');
 var Debug = require('debug');
 var url = require('url');
 var util = require('util');
+var fmt = util.format;
 
 /**
  * Proxy to the executor running on a remote machine.
@@ -102,12 +103,34 @@ function createInstance(options, callback) {
   container.on('env-updated', this._sendContainerCmd.bind(this));
   container.on('deploy', this._sendContainerCmd.bind(this));
   container.on('notification', this._onInstanceNotification.bind(this));
+  container.on('disconnect-exit', this._onInstanceExit.bind(this));
 
   this._containers[options.instanceId] = container;
   callback(null, {token: container.getToken()});
   return container;
 }
 Executor.prototype.createInstance = createInstance;
+
+function _onInstanceExit(instanceId) {
+  var meshApp = this._server.getMeshApp();
+  var Instance = meshApp.models.ServiceInstance;
+  var self = this;
+
+  Instance.findById(instanceId, function(err, inst) {
+    if (err)
+      self.debug(fmt('Dyno exited but instance not found %s', err.message));
+
+    inst.updateAttributes({
+      stopTime: Date.now(),
+    }, function(err) {
+      if (err) {
+        self.debug(
+          fmt('Dyno exited but error updating model: %s', err.message));
+      }
+    });
+  });
+}
+Executor.prototype._onInstanceExit = _onInstanceExit;
 
 function destroyInstance(instanceId, callback) {
   if (!this._containers[instanceId]) return setImmediate(callback);
