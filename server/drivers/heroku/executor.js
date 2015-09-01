@@ -164,7 +164,7 @@ function _onRegisterDyno(msg, callback) {
       if (err) return callback(err);
       var supervisorUrl = url.parse(HerokuResource.supervisorUrl);
       supervisorUrl.auth = inst.token;
-      callback({controlUri: url.format(supervisorUrl)});
+      callback({controlUri: url.format(supervisorUrl), instanceId: inst.id});
     });
   });
 }

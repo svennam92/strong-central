@@ -112,8 +112,8 @@ testHelper(function(t, baseDir, meshApp, driver) {
   });
 
   var herokuExecutor = null;
+  var instanceModelId = null;
   t.test('register heroku dyno', function(tt) {
-    tt.plan(3);
     driver.createExecutor(executorModel.id, function(err, exec, data) {
       herokuExecutor = exec;
       tt.ifError(err);
@@ -142,9 +142,75 @@ testHelper(function(t, baseDir, meshApp, driver) {
           agentVersion: '1.3.4',
         }, function(res) {
           tt.ok(res.controlUri, 'Control URI should exist');
+          instanceModelId = res.instanceId;
+          tt.end();
         });
       });
     });
+  });
+
+  t.test('Ensure instance exists', function(tt) {
+    var Instance = meshApp.models.ServiceInstance;
+    Instance.findById(instanceModelId, function(err, inst) {
+      tt.ifError(err);
+      tt.ok(inst, 'Instance should be created');
+      tt.end();
+    });
+  });
+
+  var herokuContaner = null;
+  t.test('test heroku driver: create instance', function(tt) {
+    herokuContaner = driver.createInstance({
+      executorId: executorModel.id,
+      instanceId: instanceModelId,
+      env: {},
+      deploymentId: '',
+      token: 'foo-token',
+      startOptions: {},
+    }, function(err) {
+      tt.ifError(err);
+      tt.end();
+    });
+  });
+
+  t.test('test unsuppoted commands', function(tt) {
+    var cmds = ['start', 'stop', 'restart', 'soft-stop', 'soft-restart'];
+    tt.plan(cmds.length * 2);
+    for (var i in cmds) {
+      herokuExecutor.instanceRequest(
+        instanceModelId, {cmd: cmds[i]}, checkError
+      );
+    }
+
+    function checkError(err) {
+      tt.ok(err, 'Command should error');
+      tt.equal(err.message, 'not supported');
+    }
+  });
+
+  t.test('test supervisor commands', function(tt) {
+    tt.plan(3);
+    var cmd = {cmd: 'set-size', size: 1};
+
+    herokuContaner.request = function(req, callback) {
+      tt.deepEqual(req, cmd);
+      callback({ok: 1});
+    };
+
+    herokuExecutor.instanceRequest(
+      instanceModelId, cmd, function(err, res) {
+        tt.ifError(err);
+        tt.deepEqual(res, {ok: 1});
+      }
+    );
+  });
+
+  t.test('Heroku dyno disconnect', function(tt) {
+    tt.end();
+  });
+
+  t.test('Heroku dyno exit', function(tt) {
+    tt.end();
   });
 
   t.test('Deprovision service', function(tt) {
@@ -174,5 +240,9 @@ testHelper(function(t, baseDir, meshApp, driver) {
         });
       }
     });
+  });
+
+  t.test('Audit logs', function(tt) {
+    tt.end();
   });
 });

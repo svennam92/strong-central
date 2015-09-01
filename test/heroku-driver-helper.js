@@ -31,6 +31,9 @@ function MockContainer() {
   this.updateContainerMetadata = function(data, callback) {
     callback();
   };
+  this.request = function(req, callback) {
+    setImmediate(callback);
+  };
 }
 util.inherits(MockContainer, EventEmitter);
 exports.MockContainer = MockContainer;
