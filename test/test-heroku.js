@@ -4,6 +4,7 @@ var testOptions = require('./heroku-test-options.json');
 var nock = require('nock');
 var testHelper = require('./heroku-driver-helper').testHelper;
 var os = require('os');
+var _ = require('lodash');
 
 testHelper(function(t, baseDir, meshApp, driver) {
   var authHeader = 'Basic ' + new Buffer(
@@ -17,6 +18,7 @@ testHelper(function(t, baseDir, meshApp, driver) {
     }).log(debug);
 
   var HerokuResource = meshApp.models.HerokuResource;
+  var HerokuAuditLog = meshApp.models.HerokuAuditLog;
 
   t.test('Invalid Auth', function(tt) {
     var authHeader = 'Basic invalidauth';
@@ -154,7 +156,7 @@ testHelper(function(t, baseDir, meshApp, driver) {
     Instance.findById(instanceModelId, function(err, inst) {
       tt.ifError(err);
       tt.ok(inst, 'Instance should be created');
-      tt.equal(inst.stopTime, 0, 'Stop time should not be set');
+      tt.equal(+inst.stopTime, 0, 'Stop time should not be set');
       tt.end();
     });
   });
@@ -249,6 +251,22 @@ testHelper(function(t, baseDir, meshApp, driver) {
   });
 
   t.test('Audit logs', function(tt) {
-    tt.end();
+    HerokuAuditLog.find(function(err, logs) {
+      tt.ifError(err);
+      var expected = {
+        'provision': 1,
+        'update-app-info': 1,
+        'link-sl-user': 1,
+        'link-mesh-models': 2,
+        'issue-license': 1,
+        'update-addon-env': 1,
+        'dyno-started': 1,
+        'dyno-stopped': 1,
+        'deprovision': 1,
+        'destroy-mesh-models': 3
+      };
+      tt.deepEqual(_(logs).countBy('eventType').value(), expected);
+      tt.end();
+    });
   });
 });

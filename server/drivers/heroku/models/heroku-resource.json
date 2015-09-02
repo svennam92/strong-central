@@ -15,7 +15,8 @@
     },
     "heroku_id": {
       "type": "string",
-      "required": true
+      "required": true,
+      "defaultFn": "now"
     },
     "plan": {
       "type": "string",

@@ -22,6 +22,18 @@ function herokuResource(HerokuResource) {
   HerokuResource.disableRemoteMethod('__update__serverService', false);
   HerokuResource.disableRemoteMethod('__get__SLUser', false);
 
+  HerokuResource.PROVISION = 'provision';
+  HerokuResource.UPDATE_APP_INFO = 'update-app-info';
+  HerokuResource.LINK_SL_USER = 'link-sl-user';
+  HerokuResource.LINK_MESH_MODELS = 'link-mesh-models';
+  HerokuResource.ISSUE_LICENSE = 'issue-license';
+  HerokuResource.UPDATE_ADDON_ENV = 'update-addon-env';
+  HerokuResource.PLAN_CHANGE = 'plan-change';
+  HerokuResource.DYNO_STARTED = 'dyno-started';
+  HerokuResource.DYNO_STOPPED = 'dyno-stopped';
+  HerokuResource.DEPROVISION = 'deprovision';
+  HerokuResource.DESTROY_MESH_MODELS = 'destroy-mesh-models';
+
   /**
    * Check credentials for incoming requests from Heroku. The `username` is the
    * `id` and the `password` is the `password` field of the add-on manifest.
@@ -59,7 +71,10 @@ function herokuResource(HerokuResource) {
       // resource has been provisioned and response has been sent.
       setImmediate(completeProvisioning.bind(instance));
     });
-    process.nextTick(callback);
+
+    instance.log(HerokuResource.PROVISION, {plan: this.plan});
+
+    setImmediate(callback);
   });
 
   function completeProvisioning(callback) {
@@ -83,16 +98,37 @@ function herokuResource(HerokuResource) {
     this.makeApiRequest(
       'https://api.heroku.com/vendor/apps/' + this.id, 'get', null,
       function(err, res, body) {
-        if (err) return callback(err);
+        if (err) {
+          return self.log(
+            HerokuResource.UPDATE_APP_INFO,
+            null, err, callback
+          );
+        }
+
         if (res.statusCode === 404) {
           // Based on Heroku docs:
           // The requested app doesn’t exist (e.g., it has been deleted) or
           // the add-on has been deprovisioned for this app.
+
+          self.log(
+            HerokuResource.UPDATE_APP_INFO,
+            {statusCode: res.statusCode},
+            Error('Unable to lookup application')
+          );
+
           return self.destroy(function(err) {
             if (err) return callback(err);
             callback(Error('App/addon has been deprovisioned'));
           });
         }
+
+        self.log(
+          HerokuResource.UPDATE_APP_INFO,
+          {
+            owner_email: body.owner_email,
+            app_name: body.name,
+          }
+        );
 
         self.updateAttributes({
           domains: body.domains,
@@ -117,7 +153,14 @@ function herokuResource(HerokuResource) {
         password: 'abc',
       },
       function(err, user) {
-        if (err) return callback(err);
+        if (err) {
+          return self.log(
+            HerokuResource.LINK_SL_USER,
+            null, err, callback
+          );
+        }
+
+        self.log(HerokuResource.LINK_SL_USER, {SLUserId: user.id});
         self.updateAttributes({
           SLUserId: user.id,
         }, callback);
@@ -133,27 +176,54 @@ function herokuResource(HerokuResource) {
     var self = this;
 
     async.series([
-      Service.create.bind(Service, {
-        name: this.app_name,
-        groups: [{id: 1, name: 'default', scale: 1}],
-        SLUserId: this.SLUserId,
-        herokuResourceId: self.id,
-      }),
-      Executor.create.bind(Executor, {
-        hostname: 'heroku' + this.uuid,
-        driver: 'heroku',
-        SLUserId: this.SLUserId,
-        herokuResourceId: self.id,
-      }),
+      function createService(callback) {
+        Service.findOrCreate({herokuResourceId: self.id}, {
+          name: self.app_name,
+          groups: [{id: 1, name: 'default', scale: 1}],
+          SLUserId: self.SLUserId,
+          herokuResourceId: self.id,
+        }, function(err, service) {
+          self.log(
+            HerokuResource.LINK_MESH_MODELS,
+            {model: 'ServerService', id: service ? service.id : null},
+            err, callback
+          );
+        });
+      },
+      function createExecutor(callback) {
+        Executor.findOrCreate({herokuResourceId: self.id}, {
+          hostname: 'heroku' + self.uuid,
+          driver: 'heroku',
+          SLUserId: self.SLUserId,
+          herokuResourceId: self.id,
+        }, function(err, exec) {
+          self.log(
+            HerokuResource.LINK_MESH_MODELS,
+            {model: 'Executor', id: exec ? exec.id : null},
+            err, callback
+          );
+        });
+      }
     ], callback);
   }
   HerokuResource.prototype.createMeshModels = createMeshModels;
 
   function getLicense(callback) {
+    var self = this;
+
     // TODO: Create or update account in auth2.strongloop.com and get license
-    this.updateAttributes({
-      license: 'xyz',
-    }, callback);
+    setImmediate(function(err) {
+      var lic = 'xyz';
+      if (err) {
+        return self.log(HerokuResource.ISSUE_LICENSE, null, err, callback);
+      }
+
+      self.updateAttributes({
+        license: lic,
+      }, function(err) {
+        self.log(HerokuResource.ISSUE_LICENSE, {license: lic}, err, callback);
+      });
+    });
   }
   HerokuResource.prototype.getLicense = getLicense;
 
@@ -162,7 +232,10 @@ function herokuResource(HerokuResource) {
     var registrationUrl = url.parse(HerokuResource.registrationUrl);
 
     self.executor(function(err, exec) {
-      if (err) return callback(err);
+      if (err) {
+        return self.log(HerokuResource.UPDATE_ADDON_ENV, null, err, callback);
+      }
+
       registrationUrl.auth = exec.token;
       var addonInfo = {
         registrationUrl: url.format(registrationUrl),
@@ -170,13 +243,20 @@ function herokuResource(HerokuResource) {
       };
       addonInfo = new Buffer(JSON.stringify(addonInfo)).toString('base64');
 
+      var updateValue = {
+        config: {
+          'STRONGLOOP_LICENSE': self.license,
+          'STRONGLOOP_ADDON_INFO': addonInfo,
+        }
+      };
+
       self.makeApiRequest(
-        'https://api.heroku.com/vendor/apps/' + self.id, 'put', {
-          config: {
-            'STRONGLOOP_LICENSE': self.license,
-            'STRONGLOOP_ADDON_INFO': addonInfo,
-          }
-        }, callback
+        'https://api.heroku.com/vendor/apps/' + self.id,
+        'put', updateValue, function(err) {
+          self.log(
+            HerokuResource.UPDATE_ADDON_ENV, updateValue, err, callback
+          );
+        }
       );
     });
   }
@@ -204,30 +284,89 @@ function herokuResource(HerokuResource) {
   }
   HerokuResource.prototype.makeApiRequest = makeApiRequest;
 
+  function log(eventType, data, err, callback) {
+    var HerokuAuditLog = HerokuResource.app.models.HerokuAuditLog;
+    HerokuAuditLog.create({
+      eventType: eventType,
+      herokuResourceModelId: this.id,
+      herokuUuid: this.uuid,
+      herokuAppId: this.heroku_id,
+      metadata: data,
+      error: err ? err.message : null,
+    }, function(err) {
+      if (err) console.error('Unable to save audit log: ', err.message);
+    });
+    if (callback) callback(err);
+  }
+  HerokuResource.prototype.log = log;
+
   HerokuResource.observe('before delete', function(ctx, next) {
-    ctx.Model.find({where: ctx.where}, function(err, instances) {
+    var Instance = HerokuResource.app.models.ServiceInstance;
+
+    HerokuResource.find({where: ctx.where}, function(err, resources) {
       if (err) next(err);
       return async.each(
-        instances,
-        function(instance, callback) {
+        resources,
+        function(resource, callback) {
+          resource.log(HerokuResource.DEPROVISION, {id: resource.id});
+
           async.series([
-            function(callback) {
-              instance.executor(function(err, exec) {
-                if (err) return callback(err);
-                exec.delete(callback);
-              });
-            },
-            function(callback) {
-              instance.serverService(function(err, svc) {
-                if (err) return callback(err);
-                svc.delete(callback);
-              });
-            },
+            destroyExecutor.bind(null, resource),
+            destroyService.bind(null, resource),
           ], callback);
         },
         next
       );
     });
+
+    function destroyService(resource, callback) {
+      resource.serverService(function(err, s) {
+        if (err || !s) {
+          return resource.log(
+            HerokuResource.DESTROY_MESH_MODELS,
+            {model: 'ServerService'},
+            err || Error('Unable to find service'), callback
+          );
+        }
+
+        Instance.destroyAll(
+          {herokuResourceId: resource.id},
+          function(err) {
+            return resource.log(
+              HerokuResource.DESTROY_MESH_MODELS,
+              {model: 'ServiceInstance', herokuResourceId: resource.id},
+              err);
+          }
+        );
+
+        s.delete(function(err) {
+          return resource.log(
+            HerokuResource.DESTROY_MESH_MODELS,
+            {model: 'ServerService', id: s.id},
+            err, callback
+          );
+        });
+      });
+    }
+
+    function destroyExecutor(resource, callback) {
+      resource.executor(function(err, exec) {
+        if (err || !exec) {
+          return resource.log(
+            HerokuResource.DESTROY_MESH_MODELS,
+            {model: 'Executor'},
+            err || Error('Unable to find executor'), callback
+          );
+        }
+        exec.delete(function(err) {
+          return resource.log(
+            HerokuResource.DESTROY_MESH_MODELS,
+            {model: 'Executor', id: exec.id},
+            err, callback
+          );
+        });
+      });
+    }
   });
 }
 module.exports = herokuResource;

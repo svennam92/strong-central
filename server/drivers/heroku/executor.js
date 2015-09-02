@@ -67,8 +67,18 @@ function _onRegisterDyno(msg, callback) {
       npmModules: {},
       agentVersion: msg.agentVersion,
       version: msg.version,
+      herokuResourceId: msg.herokuResourceId,
     }, function(err, inst) {
-      if (err) return callback(err);
+      if (err) {
+        return hRes.log(HerokuResource.DYNO_STARTED, {msg: msg}, err, callback);
+      }
+
+      hRes.log(
+        HerokuResource.DYNO_STARTED,
+        {msg: msg, instanceId: inst.id},
+        err
+      );
+
       var supervisorUrl = url.parse(HerokuResource.supervisorUrl);
       supervisorUrl.auth = inst.token;
       callback({controlUri: url.format(supervisorUrl), instanceId: inst.id});
@@ -114,19 +124,35 @@ Executor.prototype.createInstance = createInstance;
 function _onInstanceExit(instanceId) {
   var meshApp = this._server.getMeshApp();
   var Instance = meshApp.models.ServiceInstance;
+  var HerokuResource = meshApp.models.HerokuResource;
   var self = this;
 
   Instance.findById(instanceId, function(err, inst) {
-    if (err)
-      self.debug(fmt('Dyno exited but instance not found %s', err.message));
+    if (err) {
+      return self.debug(
+        fmt('Dyno exited but instance not found %s', err.message)
+      );
+    }
 
-    inst.updateAttributes({
-      stopTime: Date.now(),
-    }, function(err) {
+    inst.herokuResource(function(err, herokuResource) {
       if (err) {
-        self.debug(
-          fmt('Dyno exited but error updating model: %s', err.message));
+        return self.debug(
+          fmt('Error retrieving heroku resource: %s', err.message)
+        );
       }
+
+      inst.updateAttributes({
+        stopTime: Date.now(),
+      }, function(err) {
+        herokuResource.log(
+          HerokuResource.DYNO_STOPPED, {instanceId: instanceId}, err
+        );
+        if (err) {
+          self.debug(
+            fmt('Dyno exited but error updating model: %s', err.message)
+          );
+        }
+      });
     });
   });
 }
