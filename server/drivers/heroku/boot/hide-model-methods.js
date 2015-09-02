@@ -1,3 +1,11 @@
+/**
+ * The heroku driver exposes the central API to the open internet. All the API
+ * functionality (except for actions) should be read-only. This function
+ * locks down all models.
+ *
+ * start/stop/restart instance methods are also removed since we cannot control
+ * the Heroku Dyno via the Central API.
+ */
 module.exports = function(server) {
   makeReadOnly(server.models.AgentTrace);
   makeReadOnly(server.models.ServerService);
@@ -17,11 +25,6 @@ module.exports = function(server) {
   Instance.disableRemoteMethod('restart', false);
   Instance.disableRemoteMethod('start', false);
   Instance.disableRemoteMethod('stop', false);
-
-  var Service = server.models.ServerService;
-  Service.disableRemoteMethod('restart', false);
-  Service.disableRemoteMethod('start', false);
-  Service.disableRemoteMethod('stop', false);
 
   function makeReadOnly(model) {
     model.disableRemoteMethod('create', true);

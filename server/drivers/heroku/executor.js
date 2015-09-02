@@ -40,6 +40,11 @@ function _onRequest(msg, callback) {
 }
 Executor.prototype._onRequest = _onRequest;
 
+/**
+ * Handels 'register-dyno' notification from the strong-heroku-runner module.
+ * The notification is issued when a new dyno starts on Heroku and includes
+ * details about the HerokuResource and dyno size.
+ */
 function _onRegisterDyno(msg, callback) {
   var meshApp = this._server.getMeshApp();
   var Instance = meshApp.models.ServiceInstance;
@@ -121,6 +126,10 @@ function createInstance(options, callback) {
 }
 Executor.prototype.createInstance = createInstance;
 
+/**
+ * When a dyno disconnects and fails to re-connect in time, it is considered
+ * terminated and the instance model is updated with the stopTime.
+ */
 function _onInstanceExit(instanceId) {
   var meshApp = this._server.getMeshApp();
   var Instance = meshApp.models.ServiceInstance;

@@ -2,7 +2,7 @@
   "name": "HerokuResource",
   "plural": "HerokuResource",
   "base": "PersistedModel",
-  "description": "Heroku Addon API",
+  "description": "Heroku Addon API. Refer to https://devcenter.heroku.com/articles/add-on-provider-api for API details",
   "http": {
     "path": "/heroku/resources"
   },

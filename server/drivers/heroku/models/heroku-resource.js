@@ -1,10 +1,13 @@
-var auth = require('basic-auth');
 var async = require('async');
-var request = require('request');
+var auth = require('basic-auth');
+var crypto = require('crypto');
 var debug = require('debug')('strong-central:driver:heroku:resource');
+var request = require('request');
 var url = require('url');
 
 function herokuResource(HerokuResource) {
+  // Only methods POST, PUT and DELETE are required by the Heroku Addon API.
+  // See https://devcenter.heroku.com/articles/add-on-provider-api
   HerokuResource.disableRemoteMethod('find', true);
   HerokuResource.disableRemoteMethod('upsert', true);
   HerokuResource.disableRemoteMethod('createChangeStream', true);
@@ -22,6 +25,7 @@ function herokuResource(HerokuResource) {
   HerokuResource.disableRemoteMethod('__update__serverService', false);
   HerokuResource.disableRemoteMethod('__get__SLUser', false);
 
+  // Event constants for audit logs
   HerokuResource.PROVISION = 'provision';
   HerokuResource.UPDATE_APP_INFO = 'update-app-info';
   HerokuResource.LINK_SL_USER = 'link-sl-user';
@@ -59,6 +63,9 @@ function herokuResource(HerokuResource) {
    * After remote hook. Allows customization of response from API.
    */
   HerokuResource.afterRemote('create', function(ctx, instance, callback) {
+    // Change status code to 202 to indicte that resource provisioning has been
+    // started and will take time to complete. See heroku docs:
+    // https://devcenter.heroku.com/articles/add-on-provider-api#provision
     ctx.res.statusCode = 202;
 
     ctx.result = {
@@ -85,14 +92,16 @@ function herokuResource(HerokuResource) {
       this.getLicense.bind(this),
       this.updateHerokuConfig.bind(this),
     ], function(err) {
-      // TODO: Ask heroku how we can cleanup if an error occures during the
-      // provisioning process
       if (err) debug('Error while provisioning', err);
       if (callback) callback(err);
     });
   }
   HerokuResource.prototype.completeProvisioning = completeProvisioning;
 
+  /**
+   * Call the App info API to retrieve user email and application name.
+   * See https://devcenter.heroku.com/articles/add-on-app-info#get-app-info
+   */
   function updateAppOwnerInfo(callback) {
     var self = this;
     this.makeApiRequest(
@@ -141,31 +150,45 @@ function herokuResource(HerokuResource) {
   }
   HerokuResource.prototype.updateAppOwnerInfo = updateAppOwnerInfo;
 
+  /**
+   * Work with the StrongLoop User Auth subsystem to find or create a new
+   * user account for the Heroku App owner.
+   */
   function findOrCreateSLUser(callback) {
     var SLUser = HerokuResource.app.models.SLUser;
     var self = this;
 
-    SLUser.findOrCreate(
-      {username: this.owner_email},
-      {
-        username: this.owner_email,
-        email: this.owner_email,
-        password: 'abc',
-      },
-      function(err, user) {
-        if (err) {
-          return self.log(
-            HerokuResource.LINK_SL_USER,
-            null, err, callback
-          );
-        }
-
-        self.log(HerokuResource.LINK_SL_USER, {SLUserId: user.id});
-        self.updateAttributes({
-          SLUserId: user.id,
-        }, callback);
+    crypto.randomBytes(64, function(err, buf) {
+      if (err) {
+        return self.log(
+          HerokuResource.LINK_SL_USER,
+          null, err, callback
+        );
       }
-    );
+
+      var password = buf.toString('base64');
+      SLUser.findOrCreate(
+        {username: this.owner_email},
+        {
+          username: this.owner_email,
+          email: this.owner_email,
+          password: password,
+        },
+        function(err, user) {
+          if (err) {
+            return self.log(
+              HerokuResource.LINK_SL_USER,
+              null, err, callback
+            );
+          }
+
+          self.log(HerokuResource.LINK_SL_USER, {SLUserId: user.id});
+          self.updateAttributes({
+            SLUserId: user.id,
+          }, callback);
+        }
+      );
+    });
   }
   HerokuResource.prototype.findOrCreateSLUser = findOrCreateSLUser;
 
@@ -208,10 +231,13 @@ function herokuResource(HerokuResource) {
   }
   HerokuResource.prototype.createMeshModels = createMeshModels;
 
+  /**
+   * Get a product license from the SL Auth subsystem based on the addon plan.
+   */
   function getLicense(callback) {
     var self = this;
 
-    // TODO: Create or update account in auth2.strongloop.com and get license
+    // TODO: Contact auth2.strongloop.com and get license
     setImmediate(function(err) {
       var lic = 'xyz';
       if (err) {
@@ -227,6 +253,11 @@ function herokuResource(HerokuResource) {
   }
   HerokuResource.prototype.getLicense = getLicense;
 
+  /**
+   * Update heroku app with new configuration values. These env variables
+   * are consumed by strong-heroku-runner module.
+   * (https://devcenter.heroku.com/articles/add-on-app-info#update-config-vars)
+   */
   function updateHerokuConfig(callback) {
     var self = this;
     var registrationUrl = url.parse(HerokuResource.registrationUrl);
@@ -300,6 +331,9 @@ function herokuResource(HerokuResource) {
   }
   HerokuResource.prototype.log = log;
 
+  /**
+   * Deprovision the service.
+   */
   HerokuResource.observe('before delete', function(ctx, next) {
     var Instance = HerokuResource.app.models.ServiceInstance;
 
