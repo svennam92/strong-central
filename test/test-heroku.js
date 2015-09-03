@@ -104,7 +104,7 @@ testHelper(function(t, baseDir, meshApp, driver) {
           executorModel = e;
           tt.ok(e, 'Executor model should exist');
         });
-        r.SLUser(function(err, u) {
+        r.sLUser(function(err, u) {
           tt.ifError(err);
           tt.ok(u, 'User model should exist');
         });

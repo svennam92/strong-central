@@ -15,12 +15,12 @@
     "services": {
       "type": "hasMany",
       "model": "ServerService",
-      "foreignKey": "SLUserId"
+      "foreignKey": "sLUserId"
     },
     "executors": {
       "type": "hasMany",
       "model": "Executor",
-      "foreignKey": "SLUserId"
+      "foreignKey": "sLUserId"
     }
   },
   "acls": [],

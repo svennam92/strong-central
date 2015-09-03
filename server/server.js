@@ -160,11 +160,11 @@ function start(cb) {
   this._httpServer = http.createServer(this._baseApp);
 
   async.series([
-    initDatasource,
     initTracing,
     appListen,
     initDriver,
     initGatewayDriver,
+    initDatasource,
     initEnv,
     reconnectExecutors,
     reconnectGateways,
@@ -218,14 +218,15 @@ function start(cb) {
       server: self,
       config: self._executorDriverConfig,
     });
-    callback();
+
+    self._driver.init(callback);
   }
 
   function initGatewayDriver(callback) {
     self._gwDriver = new GatewayDriver({
       server: self,
     });
-    callback();
+    self._gwDriver.init(callback);
   }
 
   function reconnectExecutors(callback) {

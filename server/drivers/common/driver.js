@@ -28,6 +28,11 @@ function BaseDriver(options) {
   this._executors = {};
 }
 
+function init(callback) {
+  setImmediate(callback);
+}
+BaseDriver.prototype.init = init;
+
 /**
  * Recreate channels for existing executors/instances. Updates executor and
  * instance metadata values. (Possibly not needed in initial stages)

@@ -15,6 +15,7 @@ function herokuResource(HerokuResource) {
   HerokuResource.disableRemoteMethod('findOne', true);
   HerokuResource.disableRemoteMethod('updateAll', true);
   HerokuResource.disableRemoteMethod('exists', true);
+
   HerokuResource.disableRemoteMethod('__get__executor', false);
   HerokuResource.disableRemoteMethod('__destroy__executor', false);
   HerokuResource.disableRemoteMethod('__create__executor', false);
@@ -23,6 +24,17 @@ function herokuResource(HerokuResource) {
   HerokuResource.disableRemoteMethod('__destroy__serverService', false);
   HerokuResource.disableRemoteMethod('__create__serverService', false);
   HerokuResource.disableRemoteMethod('__update__serverService', false);
+
+  HerokuResource.disableRemoteMethod('__get__serviceInstances', false);
+  HerokuResource.disableRemoteMethod('__destroy__serviceInstances', false);
+  HerokuResource.disableRemoteMethod('__delete__serviceInstances', false);
+  HerokuResource.disableRemoteMethod('__findById__serviceInstances', false);
+  HerokuResource.disableRemoteMethod('__updateById__serviceInstances', false);
+  HerokuResource.disableRemoteMethod('__destroyById__serviceInstances', false);
+  HerokuResource.disableRemoteMethod('__count__serviceInstances', false);
+  HerokuResource.disableRemoteMethod('__create__serviceInstances', false);
+  HerokuResource.disableRemoteMethod('__update__serviceInstances', false);
+
   HerokuResource.disableRemoteMethod('__get__SLUser', false);
 
   // Event constants for audit logs
@@ -168,10 +180,10 @@ function herokuResource(HerokuResource) {
 
       var password = buf.toString('base64');
       SLUser.findOrCreate(
-        {username: this.owner_email},
+        {username: self.owner_email},
         {
-          username: this.owner_email,
-          email: this.owner_email,
+          username: self.owner_email,
+          email: self.owner_email,
           password: password,
         },
         function(err, user) {
@@ -182,9 +194,9 @@ function herokuResource(HerokuResource) {
             );
           }
 
-          self.log(HerokuResource.LINK_SL_USER, {SLUserId: user.id});
+          self.log(HerokuResource.LINK_SL_USER, {sLUserId: user.id});
           self.updateAttributes({
-            SLUserId: user.id,
+            sLUserId: user.id,
           }, callback);
         }
       );
@@ -203,7 +215,7 @@ function herokuResource(HerokuResource) {
         Service.findOrCreate({herokuResourceId: self.id}, {
           name: self.app_name,
           groups: [{id: 1, name: 'default', scale: 1}],
-          SLUserId: self.SLUserId,
+          sLUserId: self.sLUserId,
           herokuResourceId: self.id,
         }, function(err, service) {
           self.log(
@@ -217,7 +229,7 @@ function herokuResource(HerokuResource) {
         Executor.findOrCreate({herokuResourceId: self.id}, {
           hostname: 'heroku' + self.uuid,
           driver: 'heroku',
-          SLUserId: self.SLUserId,
+          sLUserId: self.sLUserId,
           herokuResourceId: self.id,
         }, function(err, exec) {
           self.log(

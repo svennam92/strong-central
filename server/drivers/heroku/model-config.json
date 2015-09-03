@@ -14,10 +14,10 @@
   },
   "SLUser": {
     "dataSource": "db",
-    "public": true
+    "public": false
   },
   "AccessToken": {
     "dataSource": "db",
-    "public": true
+    "public": false
   }
 }

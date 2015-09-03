@@ -26,6 +26,12 @@ module.exports = function(server) {
   Instance.disableRemoteMethod('start', false);
   Instance.disableRemoteMethod('stop', false);
 
+  var Service = server.models.ServerService;
+  Service.disableRemoteMethod('deploy', false);
+  Service.disableRemoteMethod('setEnvs', false);
+  Service.disableRemoteMethod('setEnv', false);
+  Service.disableRemoteMethod('unsetEnv', false);
+
   function makeReadOnly(model) {
     model.disableRemoteMethod('create', true);
     model.disableRemoteMethod('upsert', true);

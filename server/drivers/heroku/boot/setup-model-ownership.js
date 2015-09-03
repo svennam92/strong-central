@@ -18,7 +18,4 @@ module.exports = function setupModelOwnership(server) {
   SLUser.hasMany(Executor);
   HerokuResource.hasMany(Instance);
   Instance.belongsTo(HerokuResource);
-
-  // See https://github.com/strongloop/loopback/pull/435 for usage.
-  Instance.nestRemoting('processes');
 };

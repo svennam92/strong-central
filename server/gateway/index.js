@@ -32,6 +32,11 @@ function GatewayDriver(options) {
   this._gateways = {};
 }
 
+function init(callback) {
+  setImmediate(callback);
+}
+GatewayDriver.prototype.init = init;
+
 /**
  * Create a new gateway connection
  *
