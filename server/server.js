@@ -1,9 +1,11 @@
 'use strict';
 
+var DbWatcher = require('strong-db-watcher');
 var EventEmitter = require('events').EventEmitter;
 var GatewayDriver = require('./gateway');
 var MeshServer = require('strong-mesh-models').meshServer;
 var MinkeLite = require('minkelite');
+var PostgreSQL = require('loopback-connector-postgresql');
 var ServiceManager = require('./service-manager');
 var SQLite3 = require('loopback-connector-sqlite3');
 var async = require('async');
@@ -49,7 +51,8 @@ var OPTIONS = {
   //                              db. Default 1450.
   //   trace.data.maxTransaction  Number of transactions returned by the
   //                              getTransation API (JS or HTTP). Default 30.
-  //   mesh.db.driver    Database driver name (sqlite3 (default) or memory).
+  //   mesh.db.driver    Database driver name (postgresql (default) or
+  //                     sqlite3 or memory).
   //   mesh.db.filePath  File path where DB will be persisted on disk.
   //                     Default ${baseDir}/strong-mesh.db
 };
@@ -64,9 +67,15 @@ function Server(options) {
   this._listenPort = 'listenPort' in options ? options.listenPort : 8701;
   var envPath = path.resolve(this._baseDir, 'env.json');
 
-  var dbDriver = options['mesh.db.driver'] || 'sqlite3';
+  var dbDriver = options['mesh.db.driver'] || 'postgresql';
   this._dataSourceConfig = null;
   switch (dbDriver) {
+    case 'postgresql':
+      this._dataSourceConfig = {
+        connector: PostgreSQL,
+        url: options.url,
+      };
+      break;
     case 'sqlite3':
       this._dataSourceConfig = {
         connector: SQLite3,
@@ -129,6 +138,7 @@ function Server(options) {
   // The express app on which the rest of the middleware is mounted.
   this._baseApp = express();
   this._serviceManager = new ServiceManager(this);
+  // TODO: need to initialize this._minkelite
   this._meshApp = MeshServer(
     this._serviceManager, this._minkelite, meshOptions);
   this._baseApp.use('/artifacts/*', this._retrieveDriverArtifact.bind(this));
@@ -175,6 +185,7 @@ function start(cb) {
     initGatewayDriver,
     initDatasource,
     initEnv,
+    initDbWatcher,
     reconnectExecutors,
     reconnectGateways,
     emitListeningSignal,
@@ -182,7 +193,36 @@ function start(cb) {
 
   function initDatasource(callback) {
     debug('updating database');
+    self._meshApp.dataSources.db.setMaxListeners(0);
     self._meshApp.dataSources.db.autoupdate(callback);
+  }
+
+  function initDbWatcher(callback) {
+    debug('initializing db watcher');
+    // postgres
+    var connector = self._meshApp.dataSources.db.connector;
+    if (connector.name !== 'postgresql')
+        return callback();
+
+    var params = connector.client.connectionParameters;
+    var credential = fmt('postgres://%s@%s:%d/%s',
+                           params.user + ':' + params.password,
+                           params.host,
+                           params.port,
+                           params.database);
+    self._dbWatcher = {pgClient: new connector.pg.Client(credential)};
+    self._dbWatcher.pgClient.connect(function(err) {
+      if (err) {
+        if (self._dbWatcher && self._dbWatcher.pgClient)
+            self._dbWatcher.pgClient.end();
+        self._dbWatcher.pgClient = null;
+        return callback(err);
+      }
+
+      debug('initialized db watcher');
+      self._dbWatcher.watcher = new DbWatcher(self._dbWatcher.pgClient);
+      self._meshApp.useDbWatcher(self._dbWatcher.watcher, callback);
+    });
   }
 
   function initTracing(callback) {
@@ -303,6 +343,19 @@ function stop(cb) {
     shutdownTasks.push(this._driver.stop.bind(this._driver));
   }
 
+  if (this._dbWatcher && this._dbWatcher.watcher) {
+    shutdownTasks.push(
+        this._dbWatcher.watcher.close.bind(this._dbWatcher.watcher));
+  }
+
+  if (this._dbWatcher && this._dbWatcher.pgClient) {
+    shutdownTasks.push(function(callback) {
+      this._dbWatcher.pgClient.end();
+      this._dbWatcher.pgClient = null;
+      callback();
+    }.bind(this));
+  }
+
   if (this._gwDriver) {
     shutdownTasks.push(this._gwDriver.stop.bind(this._gwDriver));
   }
@@ -345,8 +398,8 @@ function updateInstanceMetadata(id, metadata, callback) {
 }
 Server.prototype.updateInstanceMetadata = updateInstanceMetadata;
 
-function createExecutor(executorId, callback) {
-  this._driver.createExecutor(executorId, callback);
+function createExecutor(executorId, token, callback) {
+  this._driver.createExecutor(executorId, token, callback);
 }
 Server.prototype.createExecutor = createExecutor;
 
@@ -442,8 +495,8 @@ function markOldProcessesStopped(instanceId, callback) {
 }
 Server.prototype.markOldProcessesStopped = markOldProcessesStopped;
 
-function createGateway(gatewayId, callback) {
-  this._gwDriver.createGateway(gatewayId, callback);
+function createGateway(gatewayId, token, callback) {
+  this._gwDriver.createGateway(gatewayId, token, callback);
 }
 Server.prototype.createGateway = createGateway;
 

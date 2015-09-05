@@ -3,8 +3,7 @@ var MockGateway = require('./mock-gateway');
 var createCentralAndTest = require('./helper').createCentralAndTest;
 
 createCentralAndTest('register and connect gateway',
-  function(t, centralApp, centralUri) {
-    centralUri.port = centralApp.port();
+  function(t, centralApp, centralUri, callback) {
     var token;
     var gw;
 
@@ -44,6 +43,7 @@ createCentralAndTest('register and connect gateway',
       centralApp.stop(function(err) {
         tt.ifError(err);
         tt.end();
+        callback();
       });
     });
   }

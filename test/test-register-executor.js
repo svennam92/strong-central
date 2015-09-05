@@ -3,8 +3,7 @@ var MockExecutor = require('./mock-executor');
 var createCentralAndTest = require('./helper').createCentralAndTest;
 
 createCentralAndTest('register and connect executor',
-  function(t, centralApp, centralUri) {
-    centralUri.port = centralApp.port();
+  function(t, centralApp, centralUri, callback) {
     var token;
     var exec;
 
@@ -14,7 +13,8 @@ createCentralAndTest('register and connect executor',
         tt.ifError(err, 'Executor should register without error');
         tt.ok(exec.id, 'Executor should have an id');
         tt.ok(exec.token, 'Executor should have a token');
-        tt.equal(exec.driver, 'some driver');
+        tt.equal(exec.driver, 'some driver',
+            'Executor should have a correct driver');
         token = exec.token;
         tt.end();
       });
@@ -45,6 +45,7 @@ createCentralAndTest('register and connect executor',
       centralApp.stop(function(err) {
         tt.ifError(err);
         tt.end();
+        callback();
       });
     });
   }

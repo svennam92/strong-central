@@ -90,19 +90,23 @@ function getInstanceInfo(executorId, callback) {
 ServiceManager.prototype.getInstanceInfo = getInstanceInfo;
 
 function onExecutorUpdate(executor, isNew, callback) {
+  debug('onExecutorUpdate(%j, %s)', executor, isNew);
   var self = this;
 
-  debug('onExecutorUpdate(%j, %s)', executor, isNew);
   if (isNew) {
-    return this._server.createExecutor(executor.id, function(err, _, data) {
-      if (err) return callback(err);
-      executor.metadata = data.metadata;
-      executor.token = data.token;
-      executor.save(function(err) {
+    return self._server.createExecutor(
+      executor.id, executor.token,
+      function(err, _, data) {
         if (err) return callback(err);
-        self._rescheduleAll(callback);
-      });
-    });
+        executor.updateAttributes({
+          metadata: data.metadata,
+          token: data.token,
+        }, function(err) {
+          if (err) return callback(err);
+          self._rescheduleAll(callback);
+        });
+      }
+    );
   }
   setImmediate(callback);
 }
@@ -115,9 +119,9 @@ function onExecutorRequest(id, req, callback) {
 ServiceManager.prototype.onExecutorRequest = onExecutorRequest;
 
 function onExecutorDestroy(executor, callback) {
-  debug('onExecutorDestroy(%j)', executor);
   var self = this;
 
+  debug('onExecutorDestroy(%j)', executor);
   executor.instances(function(err, instances) {
     if (err) return callback(err);
     async.each(instances, self._cleanupInstance.bind(self), function(err) {
@@ -180,7 +184,7 @@ ServiceManager.prototype.getApiVersionInfo = getApiVersionInfo;
  * @param {boolean} isNew true if this is a new service
  * @param {function} callback fn(err)
  */
-function onServiceUpdate(service, isNew, callback) {
+function onServiceUpdate(service, callback) {
   this._schedule(service, callback);
 }
 ServiceManager.prototype.onServiceUpdate = onServiceUpdate;
@@ -380,7 +384,7 @@ function onInstanceUpdate(instance, isNew, callback) {
           executorId: execId,
           instanceId: instId,
           env: service.env,
-          token: null,
+          token: instance.token,
           startOptions: {
             size: instance.cpus,
             trace: instance.tracingEnabled,
@@ -480,11 +484,13 @@ ServiceManager.prototype.getGatewayInfos = getGatewayInfos;
 function onGatewayUpdate(gateway, isNew, callback) {
   debug('onGatewayUpdate(%j, %s)', gateway, isNew);
   if (isNew) {
-    return this._server.createGateway(gateway.id, function(err, data) {
-      if (err) return callback(err);
-      gateway.token = data.token;
-      gateway.save(callback);
-    });
+    return this._server.createGateway(
+      gateway.id, gateway.token,
+      function(err, data) {
+        if (err) return callback(err);
+        gateway.updateAttributes({token: data.token}, callback);
+      }
+    );
   }
   setImmediate(callback);
 }

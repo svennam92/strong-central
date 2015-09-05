@@ -3,7 +3,7 @@ var async = require('async');
 var createCentralAndTest = require('./helper').createCentralAndTest;
 
 createCentralAndTest('register and connect executor',
-  function(t, centralApp, centralUri) {
+  function(t, centralApp, centralUri, callback) {
     var client = new Client(centralUri);
     var models = centralApp._meshApp.models;
     var AgentTrace = models.AgentTrace;
@@ -34,13 +34,15 @@ createCentralAndTest('register and connect executor',
           deploymentInfo: {id: 'some commit'}
         }, function(err) {
           tt.ifError(err, 'Service should update without error');
-          tt.end();
+          waitForScheduling(tt);
         });
       });
     });
 
     t.test('ensure that 1 instances exist for exec 1', function(tt) {
-      ensureInstance(tt, exec1Id, 1);
+      ensureInstance(tt, exec1Id, 1, function() {
+        tt.end();
+      });
     });
 
     t.test('register executor 2 via REST', function(tt) {
@@ -50,30 +52,37 @@ createCentralAndTest('register and connect executor',
         tt.ok(exec.token, 'Executor should have a token');
         tt.equal(exec.driver, 'executor');
         exec2Id = exec.id;
-        tt.end();
+        waitForScheduling(tt);
       });
     });
 
     t.test('ensure that 1 instances exist for exec 2', function(tt) {
-      ensureInstance(tt, exec2Id, 1);
+      ensureInstance(tt, exec2Id, 1, function() {
+        tt.end();
+      });
     });
 
     t.test('populate some metrics and processes for exec 1', function(tt) {
-      populateMetrics(tt, exec1Id);
+      populateMetrics(tt, exec1Id, function() {
+        tt.end();
+      });
     });
 
     t.test('destroy exec 1', function(tt) {
       client.executorDestroy(exec1Id, function(err) {
         tt.ifError(err);
-        tt.end();
+        waitForScheduling(tt);
       });
     });
 
     t.test('ensure that 1 instances are destroyed', function(tt) {
-      ensureInstance(tt, exec1Id, 0);
+      ensureInstance(tt, exec1Id, 0, function() {
+        tt.end();
+      });
     });
 
-    t.test('ensure that models related to exec 1 are destroyed', function(tt) {
+    t.test('ensure that models related to exec 1 are destroyed',
+        function(tt) {
       async.series([
         ensureNoneExist.bind(null, ServiceMetric),
         ensureNoneExist.bind(null, ServiceProcess),
@@ -101,16 +110,20 @@ createCentralAndTest('register and connect executor',
         tt.ok(exec.token, 'Executor should have a token');
         tt.equal(exec.driver, 'executor');
         exec3Id = exec.id;
-        tt.end();
+        waitForScheduling(tt);
       });
     });
 
     t.test('ensure that 1 instances exist for exec 3', function(tt) {
-      ensureInstance(tt, exec3Id, 1);
+      ensureInstance(tt, exec3Id, 1, function() {
+        tt.end();
+      });
     });
 
     t.test('populate some metrics and processes for exec 3', function(tt) {
-      populateMetrics(tt, exec3Id);
+      populateMetrics(tt, exec3Id, function() {
+        tt.end();
+      });
     });
 
     t.test('create service bar', function(tt) {
@@ -120,32 +133,40 @@ createCentralAndTest('register and connect executor',
           deploymentInfo: {id: 'some commit'}
         }, function(err) {
           tt.ifError(err, 'Service should update without error');
-          tt.end();
+          waitForScheduling(tt);
         });
       });
     });
 
     t.test('ensure that 2 instances exist for exec 2', function(tt) {
-      ensureInstance(tt, exec3Id, 2);
+      ensureInstance(tt, exec2Id, 2, function() {
+        tt.end();
+      });
     });
 
     t.test('ensure that 2 instances exist for exec 3', function(tt) {
-      ensureInstance(tt, exec3Id, 2);
+      ensureInstance(tt, exec3Id, 2, function() {
+        tt.end();
+      });
     });
 
     t.test('destroy service foo', function(tt) {
       client.serviceDestroy('foo', function(err) {
         tt.ifError(err, 'Service should be destroyed without error');
-        tt.end();
+        waitForScheduling(tt);
       });
     });
 
     t.test('ensure that 1 instances exist for exec 2', function(tt) {
-      ensureInstance(tt, exec3Id, 1);
+      ensureInstance(tt, exec2Id, 1, function() {
+        tt.end();
+      });
     });
 
     t.test('ensure that 1 instances exist for exec 3', function(tt) {
-      ensureInstance(tt, exec3Id, 1);
+      ensureInstance(tt, exec3Id, 1, function() {
+        tt.end();
+      });
     });
 
     t.test('ensure that models related to exec 2 service foo are destroyed',
@@ -177,9 +198,9 @@ createCentralAndTest('register and connect executor',
       });
     });
 
-    t.end();
+    callback();
 
-    function populateMetrics(tt, execId) {
+    function populateMetrics(tt, execId, callback) {
       Instance.findOne({executorId: execId}, function(err, instance) {
         tt.ifError(err);
         async.each([0, 1, 2, 3], function(wid, callback) {
@@ -194,7 +215,7 @@ createCentralAndTest('register and connect executor',
           });
         }, function(err) {
           tt.ifError(err);
-          tt.end();
+          callback(err);
         });
       });
 
@@ -217,15 +238,29 @@ createCentralAndTest('register and connect executor',
       }
     }
 
-    function ensureInstance(tt, execId, num) {
+    function ensureInstance(tt, execId, num, calback) {
       var ServiceInstance = centralApp._meshApp.models.ServiceInstance;
+
       ServiceInstance.find({where: {executorId: execId}},
         function(err, instances) {
           tt.ok(!err);
           tt.equal(instances.length, num, num + ' instance should exist');
-          tt.end();
+          calback();
         }
       );
+
+    }
+
+    function waitForScheduling(tt) {
+      var connector = centralApp._meshApp.dataSources.db.connector.name;
+      if (connector === 'postgresql') {
+        // When using DBWatcher, the callbacks are no longer enough to decide
+        // when the scheduling is completed so we need to wait a little for it
+        // to happen.
+        setTimeout(tt.end.bind(tt), 500);
+      } else {
+        tt.end();
+      }
     }
   }
 );
