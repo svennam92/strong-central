@@ -1,0 +1,11 @@
+{
+  "_meta": {
+    "sources": [
+      "./models"
+    ]
+  },
+  "ArcApp": {
+    "dataSource": null,
+    "public": true
+  }
+}

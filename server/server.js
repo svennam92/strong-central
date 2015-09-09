@@ -6,6 +6,7 @@ var MeshServer = require('strong-mesh-models').meshServer;
 var MinkeLite = require('minkelite');
 var ServiceManager = require('./service-manager');
 var SQLite3 = require('loopback-connector-sqlite3');
+var UIConsole = require('./ui-console');
 var async = require('async');
 var debug = require('debug')('strong-central:server');
 var express = require('express');
@@ -28,6 +29,7 @@ var OPTIONS = {
   MeshServer: MeshServer,
   ServiceManager: ServiceManager,
   ExecutorDriver: require('./drivers/executor'),
+  UIConsole: UIConsole,
   driverOptions: {},
 
   // Optional:
@@ -87,6 +89,7 @@ function Server(options) {
 
   this._ExecutorDriver = options.ExecutorDriver;
   this._executorDriverConfig = options.driverConfig;
+  this._UIConsole = options.UIConsole;
 
   var meshOptions = {
     db: this._dataSourceConfig,
@@ -164,6 +167,7 @@ function start(cb) {
     appListen,
     initDriver,
     initGatewayDriver,
+    initUi,
     initDatasource,
     initEnv,
     reconnectExecutors,
@@ -220,6 +224,11 @@ function start(cb) {
     });
 
     self._driver.init(callback);
+  }
+
+  function initUi(callback) {
+    self._uiConsole = new self._UIConsole(self);
+    self._uiConsole.init(callback);
   }
 
   function initGatewayDriver(callback) {
