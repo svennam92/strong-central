@@ -17,7 +17,7 @@
     "url": "git://github.com/strongloop/strong-central.git"
   },
   "author": "Krishna Raman <kraman@strongloop.com>",
-  "license": "LicenseRef-LICENSE.md",
+  "license": "SEE LICENSE IN LICENSE.md",
   "bugs": {
     "url": "https://github.com/strongloop/strong-central/issues"
   },
