@@ -167,7 +167,7 @@ test('Test container', {timeout: 2000}, function(t) {
       return cb(err);
     };
 
-    tt.plan(5);
+    tt.plan(4);
 
     container.disconnect();
     container.disconnect();

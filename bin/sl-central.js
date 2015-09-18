@@ -4,10 +4,12 @@
 
 var Parser = require('posix-getopt').BasicParser;
 var Server = require('../server/server');
+var fmt = require('util').format;
+var fs = require('fs');
 var license = require('strongloop-license');
 var mkdirp = require('mkdirp').sync;
+var nconf = require('nconf');
 var path = require('path');
-var fs = require('fs');
 var versionApi = require('strong-mesh-models/package.json').version;
 var versionCentral = require('../package.json').version;
 
@@ -31,10 +33,14 @@ function main(argv, callback) {
     'b:(base)',
     'l:(listen)',
     'N(no-control)',
+    'd:(driver)',
+    'o:(options)',
   ].join(''), argv);
 
   var base = '.strong-central';
   var listen = 8701;
+  var driver = 'executor';
+  var configFile = null;
 
   var option;
   while ((option = parser.getopt()) !== undefined) {
@@ -50,6 +56,12 @@ function main(argv, callback) {
         break;
       case 'l':
         listen = option.optarg;
+        break;
+      case 'd':
+        driver = option.optarg.toLowerCase();
+        break;
+      case 'o':
+        configFile = option.optarg;
         break;
       default:
         console.error('Invalid usage (near option \'%s\'), try `%s --help`.',
@@ -81,19 +93,31 @@ function main(argv, callback) {
     return callback(Error('Missing listen port'));
   }
 
+  nconf.env();
+  if (configFile) nconf.file('driver', configFile);
+
   // Run from base directory, so files and paths are created in it.
   mkdirp(base);
   process.chdir(base);
 
   var app = new Server({
-    cmdName: $0, baseDir: base, listenPort: listen,
+    cmdName: $0,
+    baseDir: base,
+    listenPort: listen,
+    ExecutorDriver: require(fmt('../server/drivers/%s', driver)),
+    config: nconf,
   });
 
   app.on('listening', function(listenAddr) {
-    console.log('%s: StrongLoop Central v%s (API v%s) ' +
-                'listening on port `%s`, work base is `%s`',
-                $0, versionCentral, versionApi,
-                listenAddr.port, base);
+    console.log(
+      '%s: StrongLoop Central v%s (API v%s)\n', $0, versionCentral, versionApi
+    );
+    console.log(
+      '%s: Listening on port `%s`, work base is `%s`', $0, listenAddr.port, base
+    );
+    console.log(
+      '%s: Running with %s driver\n', $0, app.driverName()
+    );
   });
 
   app.start(callback);

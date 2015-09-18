@@ -1,7 +1,6 @@
 'use strict';
 
 var EventEmitter = require('events').EventEmitter;
-var ExecutorDriver = require('./drivers/executor');
 var GatewayDriver = require('./gateway');
 var MeshServer = require('strong-mesh-models').meshServer;
 var MinkeLite = require('minkelite');
@@ -28,6 +27,12 @@ var OPTIONS = {
   // testing, or to provide alternative implementations (Driver).
   MeshServer: MeshServer,
   ServiceManager: ServiceManager,
+  ExecutorDriver: require('./drivers/executor'),
+  config: {
+    get: function() {
+      return null;
+    }
+  },
 
   // Optional:
   //   baseDir:       Defaults to '.strong-central'
@@ -85,10 +90,23 @@ function Server(options) {
     this._defaultEnv = {};
   }
 
+  this._ExecutorDriver = options.ExecutorDriver;
+  this._config = options.config;
+
   var meshOptions = {
-    auth: process.env.STRONGLOOP_PM_HTTP_AUTH,
     db: this._dataSourceConfig,
   };
+
+  // Disables REST API wide basic auth unless the driver supports it. For
+  // example Heroku driver sets up per model access check.
+  if (process.env.STRONGLOOP_PM_HTTP_AUTH) {
+    if (this._ExecutorDriver.SUPPORTS_BASIC_AUTH) {
+      meshOptions.auth = process.env.STRONGLOOP_PM_HTTP_AUTH;
+    } else {
+      console.error('Basic auth credentials were specified but %s ' +
+        'driver does not support it.', this._ExecutorDriver.NAME);
+    }
+  }
 
   this._traceOptions = {
     start_server: !!process.env.STRONGLOOP_DEBUG_MINKELITE,
@@ -118,6 +136,16 @@ function Server(options) {
 
 util.inherits(Server, EventEmitter);
 
+function driverName() {
+  return this._ExecutorDriver.NAME;
+}
+Server.prototype.driverName = driverName;
+
+function shouldScheduleSvcs() {
+  return this._ExecutorDriver.REQUIRES_SCHEDULER;
+}
+Server.prototype.shouldScheduleSvcs = shouldScheduleSvcs;
+
 function getBaseDir() {
   return this._baseDir;
 }
@@ -139,11 +167,11 @@ function start(cb) {
   this._httpServer = http.createServer(this._baseApp);
 
   async.series([
-    initDatasource,
     initTracing,
     appListen,
     initDriver,
     initGatewayDriver,
+    initDatasource,
     initEnv,
     reconnectExecutors,
     reconnectGateways,
@@ -190,20 +218,22 @@ function start(cb) {
       self._baseDir, 'artifacts'
     );
 
-    self._driver = new ExecutorDriver({
+    self._driver = new self._ExecutorDriver({
       artifactDir: artifactDir,
       baseDir: self._baseDir,
       console: console,
       server: self,
+      config: self._config,
     });
-    callback();
+
+    self._driver.init(callback);
   }
 
   function initGatewayDriver(callback) {
     self._gwDriver = new GatewayDriver({
       server: self,
     });
-    callback();
+    self._gwDriver.init(callback);
   }
 
   function reconnectExecutors(callback) {
@@ -240,7 +270,13 @@ function start(cb) {
 
   function done(err) {
     debug('startup complete');
-    if (!err) return;
+    if (!err) {
+      self._meshApp.set('url',
+        fmt('http://:%s', self._httpServer.address().port)
+      );
+      self._meshApp.emit('started');
+      return;
+    }
 
     console.error('Startup failed with: %s', err.message);
     self.stop();
@@ -287,6 +323,11 @@ function getBaseApp() {
 }
 Server.prototype.getBaseApp = getBaseApp;
 
+function getMeshApp() {
+  return this._meshApp;
+}
+
+Server.prototype.getMeshApp = getMeshApp;
 function updateExecutorData(id, hostname, addr, capacity, metadata, callback) {
   debug('updateExecutorData: id %j hostname %j addr %j capacity %j meta %j',
         id, hostname, addr, capacity, metadata);

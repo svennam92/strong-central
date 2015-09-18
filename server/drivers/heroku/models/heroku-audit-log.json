@@ -1,0 +1,34 @@
+{
+  "name": "HerokuAuditLog",
+  "plural": "HerokuAuditLogs",
+  "base": "PersistedModel",
+  "description": "Heroku Audit Logs",
+  "properties": {
+    "timestamp": {
+      "type": "date",
+      "defaultFn": "now"
+    },
+    "eventType": {
+      "type": "string",
+      "required": true
+    },
+    "herokuResourceModelId": {
+      "type": "string",
+      "required": true
+    },
+    "herokuUuid": {
+      "type": "string",
+      "required": true
+    },
+    "herokuAppId": {
+      "type": "string",
+      "required": true
+    },
+    "error": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object"
+    }
+  }
+}

@@ -11,7 +11,7 @@ createCentralAndTest('register and connect executor',
     t.test('register executor via REST', function(tt) {
       var client = new Client(centralUri);
       client.executorCreate('some driver', function(err, exec) {
-        tt.ok(!err, 'Executor should register without error');
+        tt.ifError(err, 'Executor should register without error');
         tt.ok(exec.id, 'Executor should have an id');
         tt.ok(exec.token, 'Executor should have a token');
         tt.equal(exec.driver, 'some driver');
