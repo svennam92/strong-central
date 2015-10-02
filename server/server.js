@@ -14,6 +14,7 @@ var fs = require('fs');
 var http = require('http');
 var mandatory = require('./util').mandatory;
 var path = require('path');
+var status = require('./status');
 var util = require('util');
 
 // Extend base without modifying it.
@@ -132,6 +133,7 @@ function Server(options) {
     this._serviceManager, this._minkelite, meshOptions);
   this._baseApp.use('/artifacts/*', this._retrieveDriverArtifact.bind(this));
   this._baseApp.use(this._meshApp);
+  this._baseApp.get('/status', status(this));
   this._httpServer = http.createServer(this._baseApp);
 }
 
