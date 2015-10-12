@@ -27,6 +27,7 @@ function createCentralAndTest(title, testFn) {
       });
 
       // Cleanup database
+      centralApp._meshApp.dataSources.db.setMaxListeners(0);
       centralApp._meshApp.dataSources.db.automigrate(function() {
         centralApp.start();
       });
