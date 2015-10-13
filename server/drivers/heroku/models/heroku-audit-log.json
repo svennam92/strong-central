@@ -11,22 +11,22 @@
     "eventType": {
       "type": "string",
       "required": true,
-      "postgresql": {"column": "stopReason"}
+      "postgresql": {"column": "eventType"}
     },
     "herokuResourceModelId": {
       "type": "string",
       "required": true,
-      "postgresql": {"column": "stopReason"}
+      "postgresql": {"column": "herokuResourceModelId"}
     },
     "herokuUuid": {
       "type": "string",
       "required": true,
-      "postgresql": {"column": "stopReason"}
+      "postgresql": {"column": "herokuUuid"}
     },
     "herokuAppId": {
       "type": "string",
       "required": true,
-      "postgresql": {"column": "stopReason"}
+      "postgresql": {"column": "herokuAppId"}
     },
     "error": {
       "type": "string"
