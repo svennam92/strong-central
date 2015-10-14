@@ -1,0 +1,30 @@
+{
+  "name": "BMAuditLog",
+  "plural": "BMAuditLogs",
+  "base": "PersistedModel",
+  "description": "Bluemix Audit Logs",
+  "properties": {
+    "timestamp": {
+      "type": "date",
+      "defaultFn": "now"
+    },
+    "eventType": {
+      "type": "string",
+      "required": true,
+      "postgresql": {"column": "eventType"}
+    },
+    "bmServiceInstanceId": {
+      "type": "string",
+      "required": true
+    },
+    "bmServiceBindingId": {
+      "type": "string"
+    },
+    "error": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object"
+    }
+  }
+}

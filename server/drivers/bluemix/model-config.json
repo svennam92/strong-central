@@ -1,0 +1,31 @@
+{
+  "_meta": {
+    "sources": [
+      "./models"
+    ]
+  },
+  "BMCatalog": {
+    "dataSource": "db",
+    "public": true
+  },
+  "BMServiceInstance": {
+    "dataSource": "db",
+    "public": true
+  },
+  "BMServiceBinding": {
+    "dataSource": "db",
+    "public": false
+  },
+  "BMAuditLog": {
+    "dataSource": "db",
+    "public": false
+  },
+  "AccessToken": {
+    "dataSource": "db",
+    "public": false
+  },
+  "SLUser": {
+    "dataSource": "db",
+    "public": false
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "name": "BMServiceBinding",
+  "base": "PersistedModel",
+  "properties": {
+    "id": {
+      "type": "string",
+      "id": true
+    },
+    "plan_id": {
+      "type": "string",
+      "required": true
+    },
+    "service_id": {
+      "type": "string",
+      "required": true
+    },
+    "app_guid": {
+      "type": "string",
+      "required": true
+    },
+    "parameters": {
+      "type": "object"
+    },
+    "bmServiceInstanceId": {
+      "type": "string",
+      "postgresql": {"column": "bmServiceInstanceId"}
+    },
+    "sLUserId": {
+      "type": "number",
+      "postgresql": {"column": "sLUserId"}
+    }
+  },
+  "hidden": ["bm_service_binding_id"],
+  "relations": {
+    "executor": {
+      "type": "hasOne",
+      "model": "Executor",
+      "foreignKey": "bm_service_binding_id"
+    },
+    "serverService": {
+      "type": "hasOne",
+      "model": "ServerService",
+      "foreignKey": "bm_service_binding_id"
+    },
+    "sLUser": {
+      "type": "belongsTo",
+      "model": "SLUser",
+      "foreignKey": "sLUserId"
+    }
+  }
+}

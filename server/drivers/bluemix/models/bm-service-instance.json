@@ -1,0 +1,53 @@
+{
+  "name": "BMServiceInstance",
+  "base": "PersistedModel",
+  "http": {
+    "path": "/bluemix/v2/service_instances"
+  },
+  "properties": {
+    "id": {
+      "type": "string",
+      "required": true,
+      "id": 1
+    },
+    "plan_id": {
+      "type": "string",
+      "required": true
+    },
+    "service_id": {
+      "type": "string",
+      "required": true
+    },
+    "organization_guid": {
+      "type": "string",
+      "required": true
+    },
+    "space_guid": {
+      "type": "string",
+      "required": true
+    },
+    "parameters": {
+      "type": "object"
+    },
+    "license": {
+      "type": "string"
+    },
+    "sLUserId": {
+      "type": "number",
+      "postgresql": {"column": "sLUserId"}
+    }
+  },
+  "hidden": ["sLUserId", "license"],
+  "relations": {
+    "sLUser": {
+      "type": "belongsTo",
+      "model": "SLUser",
+      "foreignKey": "sLUserId"
+    },
+    "bindings": {
+      "type": "hasMany",
+      "model": "BMServiceBinding",
+      "foreignKey": "bmServiceInstanceId"
+    }
+  }
+}

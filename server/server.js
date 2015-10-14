@@ -73,7 +73,7 @@ function Server(options) {
     case 'postgresql':
       this._dataSourceConfig = {
         connector: PostgreSQL,
-        url: options.url,
+        url: process.env.MESHDB_URL || options.db_url,
       };
       break;
     case 'sqlite3':

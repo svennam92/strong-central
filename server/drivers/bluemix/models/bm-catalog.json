@@ -1,0 +1,8 @@
+{
+  "name": "BMCatalog",
+  "base": "Model",
+  "description": "Broker endpoint which returns the service catalog",
+  "http": {
+    "path": "/bluemix/v2/catalog"
+  }
+}

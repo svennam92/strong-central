@@ -1,0 +1,66 @@
+{
+  "bluemix": {
+    "apiUser": "strongloop",
+    "apiPassword": "c05104f9716a0d0c287b2dc0e3ae5ca7",
+    "catalog": {
+      "services": [
+        {
+          "bindable": true,
+          "description": "StrongLoop Ops tooling for monitoring, profiling and tracing node.js applications.",
+          "id": "7852b91a-93c9-4151-90c0-18328c578c85",
+          "name": "Strongloop",
+          "version": "1.0.0",
+          "tags": [
+            "dev_ops"
+          ],
+          "metadata": {
+            "displayName": "StrongLoop",
+            "embeddableDashboard": true,
+            "providerDisplayName": "Strongloop, and IBM Company",
+            "longDescription": "StrongLoop Ops tooling for monitoring, profiling and tracing node.js applications.",
+            "bullets": [
+              "Real time 24x7 production monitoring with extremely low overhead.",
+              "Automatic instrumentation to gain visibility into key performance indicators like slow event loops, V8 garbage collection, heap consumption, response times plus slowest database endpoints."
+            ],
+            "featuredImageUrl": "http://strongloop.com/img/strongloop_64.png",
+            "imageUrl": "http://strongloop.com/img/strongloop_50.png",
+            "mediumImageUrl": "http://strongloop.com/img/strongloop_32.png",
+            "smallImageUrl": "http://strongloop.com/img/strongloop_24.png",
+            "documentationUrl": "http://docs.strongloop.com/",
+            "termsUrl": "http://strongloop.com/privacy-policy/",
+            "media": [
+              {
+                "type": "youtube",
+                "thumbnailUrl": "https://i.ytimg.com/vi/b_ZnifGdgZY/mqdefault.jpg",
+                "url": "https://www.youtube.com/embed/b_ZnifGdgZY",
+                "caption": "Getting Started w Strongloop"
+              }
+            ]
+          },
+          "plans": [
+            {
+              "name": "Beta",
+              "description": "This is a beta plan.",
+              "free": true,
+              "public": true,
+              "id": "238ea7ff-ff0e-4b31-a904-a815f152b85d",
+              "metadata": {
+                "bullets": [
+                  "Beta. Unstable. Use at own risk."
+                ],
+                "displayName": "Beta"
+              }
+            }
+          ],
+          "dashboard_client": {
+            "id": "mJhZ9G7ppoj8d0cW7bCvF5E/u2DDuFziq+d5hGG4/fw=",
+            "secret": "YGuPSfGOS3bPSf6PxfMrUntXofgGdLAOgnHkbXWqtFg=",
+            "redirect_uri": "https://bluemix.do.strongloop.com:8701/dashboard"
+          }
+        }
+      ]
+    },
+    "registrationUri": "https://bluemix.do.strongloop.com:8701/executor-control",
+    "supervisorUrl": "https://bluemix.do.strongloop.com:8701/supervisor-control"
+  }
+}
