@@ -178,6 +178,16 @@ function herokuResource(HerokuResource) {
         );
       }
 
+      // I have owner email, plan, need to create a strongloop user, possibly
+      // noted as created via heroku
+      //
+      // SLUser is optional, but I can use it to store information about the
+      // relationship between the auth user and the heroku user - if I need
+      // to.
+      //
+      // --sl-auth=http://user:pass@... or env var, or something
+      // or perhaps use sl-central.js/options, see nconf.file
+
       var password = buf.toString('base64');
       SLUser.findOrCreate(
         {username: self.owner_email},
@@ -248,6 +258,10 @@ function herokuResource(HerokuResource) {
    */
   function getLicense(callback) {
     var self = this;
+
+    // have user, have plan, need license, string to put in STRONGLOOP_LICENSE
+    // env var of the running heroku app
+    // this.SLUser, or.. whatever
 
     // TODO: Contact auth2.strongloop.com and get license
     setImmediate(function(err) {
